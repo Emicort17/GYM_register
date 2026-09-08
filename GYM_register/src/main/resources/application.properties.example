@@ -1,0 +1,12 @@
+spring.application.name=Gestion_persona
+server.port=${SERVER_PORT:8000}
+#Database
+spring.datasource.url=jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:personas_gestion}?useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+spring.datasource.username=${DB_USER:root}
+spring.datasource.password=${DB_PASSWORD:root}
+spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+#JWT
+jwt.secret=${JWT_SECRET:feSLZrm7QpEPMc3TY9B2erBaf6lOjLny5dRUd9h4BBo}
+jwt.expiration=${JWT_EXPIRATION:604800}
