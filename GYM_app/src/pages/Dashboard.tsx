@@ -6,6 +6,7 @@ import { Bitacora } from './Bitacora';
 import { personasService } from '../services/personasService';
 import { usuariosService } from '../services/usuariosService';
 import { bitacoraService } from '../services/bitacoraService';
+import { PersonasIcon, UsuariosIcon, BitacoraIcon, LogoutIcon } from '../icons';
 
 type View = 'personas' | 'usuarios' | 'bitacora';
 
@@ -15,6 +16,9 @@ export const Dashboard: React.FC = () => {
 
   // Stats state
   const [totalPersonas, setTotalPersonas] = useState<number>(0);
+  const [personasActivas, setPersonasActivas] = useState<number>(0);
+  const [personasProximas, setPersonasProximas] = useState<number>(0);
+  const [personasVencidas, setPersonasVencidas] = useState<number>(0);
   const [totalUsuarios, setTotalUsuarios] = useState<number>(0);
   const [totalBitacora, setTotalBitacora] = useState<number>(0);
 
@@ -26,9 +30,18 @@ export const Dashboard: React.FC = () => {
           usuariosService.getAll().catch(() => []),
           bitacoraService.getAll().catch(() => [])
         ]);
-        setTotalPersonas(Array.isArray(pData) ? pData.length : 0);
-        setTotalUsuarios(Array.isArray(uData) ? uData.length : 0);
-        setTotalBitacora(Array.isArray(bData) ? bData.length : 0);
+
+        const pList = Array.isArray(pData) ? pData : (pData as any)?.data || [];
+        const uList = Array.isArray(uData) ? uData : (uData as any)?.data || [];
+        const bList = Array.isArray(bData) ? bData : (bData as any)?.data || [];
+
+        setTotalPersonas(pList.length);
+        setPersonasActivas(pList.filter((p: any) => p.estado === 'Activo').length);
+        setPersonasProximas(pList.filter((p: any) => p.estado === 'Proximo a vencer').length);
+        setPersonasVencidas(pList.filter((p: any) => p.estado === 'Vencido').length);
+
+        setTotalUsuarios(uList.length);
+        setTotalBitacora(bList.length);
       } catch {
         // Fallback silently
       }
@@ -92,26 +105,26 @@ export const Dashboard: React.FC = () => {
               active={currentView === 'personas'}
               onClick={() => setCurrentView('personas')}
               label="Personas / Socios"
-              icon="👥"
+              icon={<PersonasIcon size={20} color={currentView === 'personas' ? 'var(--primary)' : 'var(--text-main)'} />}
             />
             <NavItem
               active={currentView === 'usuarios'}
               onClick={() => setCurrentView('usuarios')}
               label="Usuarios Sistema"
-              icon="🔐"
+              icon={<UsuariosIcon size={20} color={currentView === 'usuarios' ? 'var(--primary)' : 'var(--text-main)'} />}
             />
             <NavItem
               active={currentView === 'bitacora'}
               onClick={() => setCurrentView('bitacora')}
               label="Bitácora Auditoría"
-              icon="📋"
+              icon={<BitacoraIcon size={20} color={currentView === 'bitacora' ? 'var(--primary)' : 'var(--text-main)'} />}
             />
           </ul>
         </nav>
 
         <div style={{ padding: '1.2rem', borderTop: '1px solid var(--border)', backgroundColor: '#f8fafc' }}>
           <button className="btn-outline" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onClick={logout}>
-            <span>🚪</span> Cerrar Sesión
+            <LogoutIcon size={18} color="currentColor" /> Cerrar Sesión
           </button>
         </div>
       </aside>
@@ -120,16 +133,31 @@ export const Dashboard: React.FC = () => {
       <main style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
         {/* Top Summary Cards */}
         <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon">👥</div>
-            <div className="stat-info">
+          <div className="stat-card" style={{ flex: 1.2 }}>
+            <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <PersonasIcon size={24} color="var(--primary)" />
+            </div>
+            <div className="stat-info" style={{ width: '100%' }}>
               <h4>Socios Registrados</h4>
-              <div className="stat-value">{totalPersonas}</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.8rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+                <div className="stat-value">{totalPersonas}</div>
+                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                  <span className="badge badge-success" title="Socios activos">{personasActivas} Activos</span>
+                  {personasProximas > 0 && (
+                    <span className="badge badge-warning" title="Próximos a vencer">{personasProximas} Por vencer</span>
+                  )}
+                  {personasVencidas > 0 && (
+                    <span className="badge badge-danger" title="Socios vencidos">{personasVencidas} Vencidos</span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="stat-card">
-            <div className="stat-icon">🔐</div>
+            <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <UsuariosIcon size={24} color="var(--primary)" />
+            </div>
             <div className="stat-info">
               <h4>Usuarios Sistema</h4>
               <div className="stat-value">{totalUsuarios}</div>
@@ -137,7 +165,9 @@ export const Dashboard: React.FC = () => {
           </div>
 
           <div className="stat-card">
-            <div className="stat-icon">📋</div>
+            <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <BitacoraIcon size={24} color="var(--primary)" />
+            </div>
             <div className="stat-info">
               <h4>Movimientos Bitácora</h4>
               <div className="stat-value">{totalBitacora}</div>
@@ -152,7 +182,7 @@ export const Dashboard: React.FC = () => {
   );
 };
 
-const NavItem: React.FC<{ active: boolean; onClick: () => void; label: string; icon: string }> = ({
+const NavItem: React.FC<{ active: boolean; onClick: () => void; label: string; icon: React.ReactNode }> = ({
   active,
   onClick,
   label,
@@ -177,9 +207,10 @@ const NavItem: React.FC<{ active: boolean; onClick: () => void; label: string; i
           transition: 'all 0.15s ease'
         }}
       >
-        <span style={{ fontSize: '1.1rem' }}>{icon}</span>
+        <span style={{ display: 'flex', alignItems: 'center' }}>{icon}</span>
         {label}
       </button>
     </li>
   );
 };
+

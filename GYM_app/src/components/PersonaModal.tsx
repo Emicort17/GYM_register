@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import type { Persona } from '../services/personasService';
 
+export interface PersonaSaveOptions {
+  registrarPagoInmediato?: boolean;
+  fechaPago?: string;
+}
+
 interface PersonaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (personaData: Partial<Persona>) => Promise<void>;
+  onSave: (personaData: Partial<Persona>, options?: PersonaSaveOptions) => Promise<void>;
   initialData?: Persona | null;
 }
 
@@ -18,25 +23,32 @@ export const PersonaModal: React.FC<PersonaModalProps> = ({
   const [apellidos, setApellidos] = useState('');
   const [correo, setCorreo] = useState('');
   const [telefono, setTelefono] = useState('');
-  const [fecha_registro, setFechaRegistro] = useState('');
+  const [edad, setEdad] = useState<number | ''>(25);
+  
+  // Pago inicial opcional
+  const [registrarPagoInmediato, setRegistrarPagoInmediato] = useState(true);
+  const [fechaPago, setFechaPago] = useState(new Date().toISOString().split('T')[0]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (initialData) {
-      // Split name back into nombres and apellidos if possible, or just put it all in nombres
       const parts = (initialData.name || '').split(' ');
       setNombres(parts[0] || '');
       setApellidos(parts.slice(1).join(' ') || '');
       setCorreo(initialData.email || '');
       setTelefono(initialData.telefono || '');
-      setFechaRegistro('');
+      setEdad(initialData.age || 25);
+      setRegistrarPagoInmediato(false); // Default to false when editing existing persona
     } else {
       setNombres('');
       setApellidos('');
       setCorreo('');
       setTelefono('');
-      setFechaRegistro('');
+      setEdad(25);
+      setRegistrarPagoInmediato(true); // Default to true when creating new persona
+      setFechaPago(new Date().toISOString().split('T')[0]);
     }
     setError('');
   }, [initialData, isOpen]);
@@ -49,20 +61,19 @@ export const PersonaModal: React.FC<PersonaModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Compute age from fechaNacimiento
-      let age = 0;
-      if (fecha_registro) {
-        const diff_ms = Date.now() - new Date(fecha_registro).getTime();
-        const age_dt = new Date(diff_ms);
-        age = Math.abs(age_dt.getUTCFullYear() - 1970);
-      }
+      const personaPayload: Partial<Persona> = {
+        name: `${nombres.trim()} ${apellidos.trim()}`.trim(),
+        email: correo.trim(),
+        telefono: telefono.trim(),
+        age: typeof edad === 'number' ? edad : 25
+      };
 
-      await onSave({
-        name: `${nombres} ${apellidos}`.trim(),
-        email: correo,
-        telefono,
-        age
-      });
+      const saveOptions: PersonaSaveOptions = {
+        registrarPagoInmediato: !initialData && registrarPagoInmediato,
+        fechaPago
+      };
+
+      await onSave(personaPayload, saveOptions);
       onClose();
     } catch (err: any) {
       setError(err.message || 'Error al guardar la persona');
@@ -73,9 +84,9 @@ export const PersonaModal: React.FC<PersonaModalProps> = ({
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '550px' }}>
         <div className="modal-header">
-          <h3>{initialData ? 'Editar Persona' : 'Nueva Persona'}</h3>
+          <h3>{initialData ? 'Editar Persona / Socio' : 'Nueva Persona / Socio'}</h3>
           <button className="modal-close-btn" onClick={onClose}>&times;</button>
         </div>
 
@@ -89,8 +100,9 @@ export const PersonaModal: React.FC<PersonaModalProps> = ({
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="form-group">
-                <label>Nombres *</label>
+                <label htmlFor="nombres">Nombres *</label>
                 <input
+                  id="nombres"
                   type="text"
                   required
                   value={nombres}
@@ -100,8 +112,9 @@ export const PersonaModal: React.FC<PersonaModalProps> = ({
               </div>
 
               <div className="form-group">
-                <label>Apellidos *</label>
+                <label htmlFor="apellidos">Apellidos *</label>
                 <input
+                  id="apellidos"
                   type="text"
                   required
                   value={apellidos}
@@ -110,35 +123,83 @@ export const PersonaModal: React.FC<PersonaModalProps> = ({
                 />
               </div>
             </div>
-            <div className="form-group">
-              <label>Teléfono</label>
-              <input
-                type="text"
-                value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
-                placeholder="Ej. 8888-9999"
-              />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group">
+                <label htmlFor="correo">Correo Electrónico *</label>
+                <input
+                  id="correo"
+                  type="email"
+                  required
+                  value={correo}
+                  onChange={(e) => setCorreo(e.target.value)}
+                  placeholder="juan.perez@example.com"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="telefono">Teléfono *</label>
+                <input
+                  id="telefono"
+                  type="text"
+                  required
+                  value={telefono}
+                  onChange={(e) => setTelefono(e.target.value)}
+                  placeholder="Ej. 8888-9999"
+                />
+              </div>
             </div>
 
-            <div className="form-group">
-              <label>Correo Electrónico *</label>
+            <div className="form-group" style={{ maxWidth: '200px' }}>
+              <label htmlFor="edad">Edad *</label>
               <input
-                type="email"
+                id="edad"
+                type="number"
+                min="1"
+                max="120"
                 required
-                value={correo}
-                onChange={(e) => setCorreo(e.target.value)}
-                placeholder="juan.perez@example.com"
+                value={edad}
+                onChange={(e) => setEdad(e.target.value ? parseInt(e.target.value, 10) : '')}
+                placeholder="Ej. 25"
               />
             </div>
 
-            <div className="form-group">
-              <label>Fecha de Registro</label>
-              <input
-                type="date"
-                value={fecha_registro}
-                onChange={(e) => setFechaRegistro(e.target.value)}
-              />
-            </div>
+            {/* Opciones de Registro de Pago Inmediato (Solo al crear nueva persona) */}
+            {!initialData && (
+              <div style={{
+                marginTop: '1.2rem',
+                padding: '1rem',
+                backgroundColor: 'var(--bg-color)',
+                borderRadius: '8px',
+                border: '1px solid var(--border)'
+              }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontWeight: 600, color: 'var(--primary)' }}>
+                  <input
+                    type="checkbox"
+                    checked={registrarPagoInmediato}
+                    onChange={(e) => setRegistrarPagoInmediato(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  Registrar primer pago de mensualidad inmediatamente
+                </label>
+
+                {registrarPagoInmediato && (
+                  <div className="form-group" style={{ marginTop: '0.8rem', marginBottom: 0 }}>
+                    <label htmlFor="fechaPagoInicial">Fecha del Pago *</label>
+                    <input
+                      id="fechaPagoInicial"
+                      type="date"
+                      required={registrarPagoInmediato}
+                      value={fechaPago}
+                      onChange={(e) => setFechaPago(e.target.value)}
+                    />
+                    <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '0.2rem' }}>
+                      El pago otorgará 1 mes de acceso activo a partir de la fecha seleccionada.
+                    </small>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="modal-footer">
@@ -146,7 +207,7 @@ export const PersonaModal: React.FC<PersonaModalProps> = ({
               Cancelar
             </button>
             <button type="submit" className="btn-primary" disabled={isSubmitting}>
-              {isSubmitting ? 'Guardando...' : initialData ? 'Actualizar' : 'Guardar'}
+              {isSubmitting ? 'Guardando...' : initialData ? 'Actualizar Persona' : 'Guardar y Continuar'}
             </button>
           </div>
         </form>
