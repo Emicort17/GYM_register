@@ -6,9 +6,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import gym.demo.Gestion_persona.config.ApiResponse;
+import gym.demo.Gestion_persona.models.dto.ChangePasswordDto;
 import gym.demo.Gestion_persona.models.dto.UserDto;
 import gym.demo.Gestion_persona.services.UsuarioService;
 
@@ -76,9 +78,10 @@ public class UsuarioController {
     }
 
 
-    // Actualizar un usuario existente
-    @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse> updateUsuario(@PathVariable Integer id, @Valid @RequestBody UserDto usuarioDto) {
+    // Actualizar parcialmente los datos personales de un usuario existente (no incluye la contraseña,
+    // que se modifica exclusivamente mediante PATCH /{id}/password).
+    @PatchMapping("/{id}")
+    public ResponseEntity<ApiResponse> updateUsuario(@PathVariable Integer id, @RequestBody UserDto usuarioDto) {
         logger.info("Iniciando actualización para el usuario con ID: {}", id);
         Optional<UserDto> updatedUsuario = usuarioService.updateUsuario(id, usuarioDto);
         ApiResponse response;
@@ -92,6 +95,19 @@ public class UsuarioController {
         }
 
         return new ResponseEntity<>(response, response.getStatus());
+    }
+
+    // Cambio de contraseña propio. Requiere la contraseña actual y solo el propietario
+    // de la cuenta autenticado por JWT puede invocarlo (ver MainSecurity y UsuarioService).
+    @PatchMapping("/{id}/password")
+    public ResponseEntity<ApiResponse> changePassword(@PathVariable Integer id,
+                                                        @Valid @RequestBody ChangePasswordDto changePasswordDto,
+                                                        Authentication authentication) {
+        logger.info("Solicitud de cambio de contraseña para el usuario con ID: {}", id);
+        usuarioService.changePassword(id, authentication.getName(),
+                changePasswordDto.getCurrentPassword(), changePasswordDto.getNewPassword());
+        ApiResponse response = new ApiResponse(HttpStatus.OK, false, "Contraseña actualizada correctamente");
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     // Eliminar un usuario

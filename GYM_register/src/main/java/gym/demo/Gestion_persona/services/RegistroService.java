@@ -10,6 +10,7 @@ import gym.demo.Gestion_persona.models.dto.PersonaEstadoDto;
 import gym.demo.Gestion_persona.models.dto.RegistroDto;
 import gym.demo.Gestion_persona.models.entity.PersonBean;
 import gym.demo.Gestion_persona.models.entity.RegistroBean;
+import gym.demo.Gestion_persona.models.enums.TipoPago;
 import gym.demo.Gestion_persona.models.repository.PersonRepository;
 import gym.demo.Gestion_persona.models.repository.RegistroRepository;
 
@@ -36,9 +37,11 @@ public class RegistroService {
     private final PersonRepository personRepository;
     private final BitacoraService bitacoraService;
 
-    // Registrar un nuevo pago para una persona. El pago dura 1 mes desde su fecha.
+    // Registrar un nuevo pago para una persona. La vigencia depende del tipo de pago
+    // (mensual por defecto, trimestral, semestral o anual). No se permite registrar dos
+    // pagos para la misma persona en la misma fecha (evita altas duplicadas por error).
     @Transactional(rollbackFor = {SQLException.class})
-    public ResponseEntity<ApiResponse> registrarPago(Integer personaId, LocalDate fechaPago) {
+    public ResponseEntity<ApiResponse> registrarPago(Integer personaId, LocalDate fechaPago, TipoPago tipoPago) {
         Optional<PersonBean> foundPersona = personRepository.findById(personaId);
         if (foundPersona.isEmpty()) {
             return new ResponseEntity<>(
@@ -48,17 +51,27 @@ public class RegistroService {
         }
 
         LocalDate fecha = fechaPago != null ? fechaPago : LocalDate.now();
+        TipoPago tipo = tipoPago != null ? tipoPago : TipoPago.MENSUAL;
+
+        if (repository.existsByPersonaIdAndFechaPago(personaId, fecha)) {
+            return new ResponseEntity<>(
+                    new ApiResponse(HttpStatus.BAD_REQUEST, true,
+                            "Ya existe un pago registrado para esta persona en la fecha " + fecha),
+                    HttpStatus.BAD_REQUEST
+            );
+        }
 
         RegistroBean registro = RegistroBean.builder()
                 .persona(foundPersona.get())
                 .fechaPago(fecha)
-                .fechaVencimiento(fecha.plusMonths(1))
+                .tipoPago(tipo)
+                .fechaVencimiento(fecha.plusMonths(tipo.getMeses()))
                 .fechaCreacion(LocalDateTime.now())
                 .build();
 
         RegistroBean saved = repository.saveAndFlush(registro);
         bitacoraService.registrar("REGISTRAR_PAGO", "registro", saved.getId(),
-                "Pago registrado para persona ID " + personaId + ", vence " + saved.getFechaVencimiento());
+                "Pago " + tipo + " registrado para persona ID " + personaId + ", vence " + saved.getFechaVencimiento());
 
         return new ResponseEntity<>(
                 new ApiResponse(RegistroDto.fromEntity(saved, calcularEstado(saved.getFechaVencimiento())), HttpStatus.OK),

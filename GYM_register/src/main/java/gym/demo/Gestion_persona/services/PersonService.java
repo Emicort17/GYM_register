@@ -61,6 +61,13 @@ public class PersonService {
                     HttpStatus.BAD_REQUEST
             );
         }
+        // Verifica si el teléfono ya está registrado
+        if (repository.existsByTelefono(person.getTelefono())) {
+            return new ResponseEntity<>(
+                    new ApiResponse(HttpStatus.BAD_REQUEST, true, "El teléfono ya está registrado"),
+                    HttpStatus.BAD_REQUEST
+            );
+        }
         // La fecha de registro se guarda una única vez, al momento de dar de alta a la persona
         if (person.getFechaRegistro() == null) {
             person.setFechaRegistro(LocalDate.now());
@@ -89,6 +96,13 @@ public class PersonService {
             if (repository.existsByEmailAndIdNot(person.getEmail(), person.getId())) {
                 return new ResponseEntity<>(
                         new ApiResponse(HttpStatus.BAD_REQUEST, true, "El correo ya está registrado por otra persona"),
+                        HttpStatus.BAD_REQUEST
+                );
+            }
+            // Verifica si el teléfono ya está registrado por otra persona
+            if (repository.existsByTelefonoAndIdNot(person.getTelefono(), person.getId())) {
+                return new ResponseEntity<>(
+                        new ApiResponse(HttpStatus.BAD_REQUEST, true, "El teléfono ya está registrado por otra persona"),
                         HttpStatus.BAD_REQUEST
                 );
             }

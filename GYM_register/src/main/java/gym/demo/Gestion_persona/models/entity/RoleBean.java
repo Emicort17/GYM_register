@@ -23,7 +23,7 @@ public class RoleBean {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id_role;
 
-    @Column(name = "nombre", nullable = false)
+    @Column(name = "nombre", nullable = false, unique = true)
     private String name;
 
     @OneToMany(mappedBy = "role")

@@ -3,6 +3,8 @@ package gym.demo.Gestion_persona.models.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -16,7 +18,7 @@ public class UserBean {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id_usuario;
 
-    @Column(name = "email", nullable = false)
+    @Column(name = "email", nullable = false, unique = true)
     private String email;
 
     @Column(name = "contrasena", nullable = false)
@@ -27,6 +29,11 @@ public class UserBean {
 
     @Column(columnDefinition = "BOOL DEFAULT false")
     private Boolean blocked;
+
+    // Marca de tiempo del último cambio de contraseña: permite invalidar los JWT
+    // emitidos antes de ese cambio (ver JwtProvider/JwtAuthenticationFilter).
+    @Column(name = "password_changed_at")
+    private LocalDateTime passwordChangedAt;
 
     @ManyToOne
     @JoinColumn(name = "id_role")

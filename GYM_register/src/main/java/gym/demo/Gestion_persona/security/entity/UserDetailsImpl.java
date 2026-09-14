@@ -5,6 +5,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import gym.demo.Gestion_persona.models.entity.UserBean;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
 
@@ -15,13 +16,22 @@ public class UserDetailsImpl implements UserDetails {
     private boolean isBlocked;
     private boolean isEnabled;
     private Collection<? extends GrantedAuthority> authorities;
+    // Marca de tiempo del último cambio de contraseña, usada para invalidar los JWT
+    // emitidos antes de ese cambio (ver JwtProvider/JwtAuthenticationFilter). Puede ser null.
+    private LocalDateTime passwordChangedAt;
 
     public UserDetailsImpl(String username, String password, boolean isBlocked, boolean isEnabled, Collection<? extends GrantedAuthority> authorities) {
+        this(username, password, isBlocked, isEnabled, authorities, null);
+    }
+
+    public UserDetailsImpl(String username, String password, boolean isBlocked, boolean isEnabled,
+                            Collection<? extends GrantedAuthority> authorities, LocalDateTime passwordChangedAt) {
         this.username = username;
         this.password = password;
         this.isBlocked = isBlocked;
         this.isEnabled = isEnabled;
         this.authorities = authorities;
+        this.passwordChangedAt = passwordChangedAt;
     }
 
     public static UserDetailsImpl build(UserBean user) {
@@ -35,8 +45,13 @@ public class UserDetailsImpl implements UserDetails {
                 user.getPassword(),
                 user.getBlocked() != null ? user.getBlocked() : false,
                 user.getStatus() != null ? user.getStatus() : true,
-                Collections.singleton(authority)
+                Collections.singleton(authority),
+                user.getPasswordChangedAt()
         );
+    }
+
+    public LocalDateTime getPasswordChangedAt() {
+        return passwordChangedAt;
     }
 
 

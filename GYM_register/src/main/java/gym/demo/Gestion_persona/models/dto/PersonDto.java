@@ -13,7 +13,7 @@ public class PersonDto {
     private Integer id;
 
     @NotBlank(message = "El nombre no puede estar vacío")
-    @Size(min = 20, max = 60, message = "El nombre debe tener entre 2 y 50 caracteres")
+    @Size(min = 2, max = 60, message = "El nombre debe tener entre 2 y 60 caracteres")
     private String name;
 
     @NotBlank(message = "El correo no puede estar vacío")
@@ -27,7 +27,7 @@ public class PersonDto {
     @NotNull(message = "La edad no puede estar vacía")
     @Min(value = 1, message = "La edad debe ser mayor a 0")
     @Max(value = 120, message = "La edad debe ser menor o igual a 120")
-    private int age;
+    private Integer age;
 
     // Método para convertir DTO a entidad
     public PersonBean toEntity() {

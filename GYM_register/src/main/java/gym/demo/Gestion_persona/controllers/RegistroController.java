@@ -16,11 +16,15 @@ public class RegistroController {
     @Autowired
     private RegistroService registroService;
 
-    // Registrar un nuevo pago (adjuntar un "pago" a la persona). Body opcional: { "fechaPago": "yyyy-MM-dd" }
+    // Registrar un nuevo pago (adjuntar un "pago" a la persona).
+    // Body opcional: { "fechaPago": "yyyy-MM-dd", "tipoPago": "MENSUAL|TRIMESTRAL|SEMESTRAL|ANUAL" }
+    // Si no se envía tipoPago, se asume MENSUAL.
     @PostMapping
     public ResponseEntity<ApiResponse> registrarPago(@PathVariable Integer personaId,
                                                        @RequestBody(required = false) RegistroDto body) {
-        return registroService.registrarPago(personaId, body != null ? body.getFechaPago() : null);
+        return registroService.registrarPago(personaId,
+                body != null ? body.getFechaPago() : null,
+                body != null ? body.getTipoPago() : null);
     }
 
     // Historial de pagos de la persona

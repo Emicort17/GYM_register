@@ -8,8 +8,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import gym.demo.Gestion_persona.security.entity.UserDetailsImpl;
 
 import java.security.Key;
+import java.time.ZoneId;
 import java.util.Date;
 
 @Service
@@ -29,6 +31,18 @@ public class JwtProvider {
         UserDetails user = (UserDetails) auth.getPrincipal();
         Claims claims = Jwts.claims().setSubject(user.getUsername());
         claims.put("roles", user.getAuthorities());
+
+        // Se incluye la marca de tiempo del último cambio de contraseña conocida en el
+        // momento de emitir el token. JwtAuthenticationFilter la compara contra el valor
+        // actual en base de datos para invalidar tokens emitidos antes de un cambio de contraseña.
+        long pwdChangedAt = 0L;
+        if (user instanceof UserDetailsImpl userDetailsImpl && userDetailsImpl.getPasswordChangedAt() != null) {
+            pwdChangedAt = userDetailsImpl.getPasswordChangedAt()
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli();
+        }
+        claims.put("pwdChangedAt", pwdChangedAt);
 
         Date tokenCreateTime = new Date();
         Date tokenValidity = new Date(tokenCreateTime.getTime() + expiration * 1000);

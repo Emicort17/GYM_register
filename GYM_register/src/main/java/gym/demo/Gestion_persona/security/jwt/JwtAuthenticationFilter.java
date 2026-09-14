@@ -12,9 +12,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import gym.demo.Gestion_persona.security.entity.UserDetailsImpl;
 import gym.demo.Gestion_persona.security.service.UserDetailsServiceImpl;
 
 import java.io.IOException;
+import java.time.ZoneId;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -35,6 +37,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String username = claims.getSubject();
 
                 UserDetails user = service.loadUserByUsername(username);
+
+                if (isTokenOutdatedByPasswordChange(user, claims)) {
+                    System.out.println("Token rechazado: la contraseña del usuario cambió después de emitirse el token: " + username);
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "El token ya no es válido, inicie sesión nuevamente");
+                    return;
+                }
+
                 Authentication auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(auth);
 
@@ -51,4 +60,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    // Compara la marca de tiempo de cambio de contraseña embebida en el token contra el valor
+    // actual almacenado para el usuario. Si la contraseña cambió después de emitirse el token,
+    // este ya no es válido (evita que un token robado/antiguo siga funcionando tras un cambio de contraseña).
+    private boolean isTokenOutdatedByPasswordChange(UserDetails user, Claims claims) {
+        if (!(user instanceof UserDetailsImpl userDetailsImpl) || userDetailsImpl.getPasswordChangedAt() == null) {
+            return false;
+        }
+
+        long currentPwdChangedAt = userDetailsImpl.getPasswordChangedAt()
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli();
+
+        long tokenPwdChangedAt = 0L;
+        Object claimValue = claims.get("pwdChangedAt");
+        if (claimValue instanceof Number number) {
+            tokenPwdChangedAt = number.longValue();
+        }
+
+        return tokenPwdChangedAt < currentPwdChangedAt;
+    }
 }

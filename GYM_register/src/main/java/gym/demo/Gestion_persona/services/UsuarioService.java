@@ -7,21 +7,29 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import gym.demo.Gestion_persona.exceptions.InvalidCurrentPasswordException;
+import gym.demo.Gestion_persona.exceptions.ResourceNotFoundException;
 import gym.demo.Gestion_persona.models.dto.UserDto;
 import gym.demo.Gestion_persona.models.entity.RoleBean;
 import gym.demo.Gestion_persona.models.entity.UserBean;
 import gym.demo.Gestion_persona.models.repository.RoleRepository;
 import gym.demo.Gestion_persona.models.repository.UserRepository;
+import org.springframework.security.access.AccessDeniedException;
 
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
 public class UsuarioService {
 
     private static final Logger logger = LoggerFactory.getLogger(UsuarioService.class);
+
+    private static final Pattern EMAIL_PATTERN =
+            Pattern.compile("^[\\w.+-]+@[\\w-]+\\.[a-zA-Z]{2,}$");
 
     @Autowired
     private UserRepository usuarioDao;
@@ -73,17 +81,52 @@ public class UsuarioService {
         return toDTO(savedUsuario);
     }
 
+    // Actualización PARCIAL de datos personales del usuario (no toca la contraseña,
+    // que se modifica exclusivamente mediante changePassword()). Los campos no enviados
+    // en el DTO se conservan sin cambios.
     @Transactional
     public Optional<UserDto> updateUsuario(Integer id, UserDto UserDto) {
         Optional<UserBean> existingUsuario = usuarioDao.findById(id);
         if (existingUsuario.isPresent()) {
             UserBean usuario = existingUsuario.get();
+
+            if (UserDto.getEmail() != null) {
+                if (!EMAIL_PATTERN.matcher(UserDto.getEmail()).matches()) {
+                    throw new IllegalArgumentException("El correo debe tener un formato válido");
+                }
+                if (!UserDto.getEmail().equalsIgnoreCase(usuario.getEmail())
+                        && usuarioDao.existsByEmail(UserDto.getEmail())) {
+                    throw new IllegalArgumentException("El correo ya está registrado");
+                }
+            }
+
             setUsuarioData(usuario, UserDto, false);
             usuarioDao.save(usuario);
             bitacoraService.registrar("ACTUALIZAR_USUARIO", "usuario", id, "Actualización de usuario: " + usuario.getEmail());
             return Optional.of(toDTO(usuario));
         }
         return Optional.empty();
+    }
+
+    // Cambio de contraseña propio: exige la contraseña actual y solo permite que el
+    // usuario autenticado modifique su propia cuenta (nunca la de otro usuario).
+    @Transactional
+    public void changePassword(Integer id, String authenticatedEmail, String currentPassword, String newPassword) {
+        UserBean usuario = usuarioDao.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+
+        if (!usuario.getEmail().equalsIgnoreCase(authenticatedEmail)) {
+            throw new AccessDeniedException("No tiene permisos para modificar la contraseña de este usuario");
+        }
+
+        if (!passwordEncoder.matches(currentPassword, usuario.getPassword())) {
+            throw new InvalidCurrentPasswordException("La contraseña actual es incorrecta");
+        }
+
+        usuario.setPassword(passwordEncoder.encode(newPassword));
+        usuario.setPasswordChangedAt(LocalDateTime.now());
+        usuarioDao.save(usuario);
+        bitacoraService.registrar("CAMBIAR_CONTRASENA", "usuario", id, "Cambio de contraseña del usuario: " + usuario.getEmail());
     }
 
     @Transactional
@@ -99,13 +142,22 @@ public class UsuarioService {
 
     private void setUsuarioData(UserBean usuario, UserDto UserDto, boolean isNew) {
         logger.info("Iniciando la configuración del usuario...");
-        usuario.setEmail(UserDto.getEmail());
 
-        if (UserDto.getContrasena() != null && !UserDto.getContrasena().isEmpty()) {
-            String encodedPassword = passwordEncoder.encode(UserDto.getContrasena());
-            usuario.setPassword(encodedPassword);
+        if (UserDto.getEmail() != null) {
+            usuario.setEmail(UserDto.getEmail());
         } else if (isNew) {
-            throw new IllegalArgumentException("La contraseña es obligatoria para un nuevo usuario.");
+            throw new IllegalArgumentException("El correo es obligatorio para un nuevo usuario.");
+        }
+
+        // La contraseña solo se establece al crear el usuario. Para un usuario existente,
+        // el cambio de contraseña se hace exclusivamente a través de changePassword().
+        if (isNew) {
+            if (UserDto.getContrasena() != null && !UserDto.getContrasena().isBlank()) {
+                usuario.setPassword(passwordEncoder.encode(UserDto.getContrasena()));
+                usuario.setPasswordChangedAt(LocalDateTime.now());
+            } else {
+                throw new IllegalArgumentException("La contraseña es obligatoria para un nuevo usuario.");
+            }
         }
 
         if (UserDto.getRole() != null && UserDto.getRole().getName() != null) {
@@ -129,6 +181,12 @@ public class UsuarioService {
         if (!role.isPresent()) {
             logger.error("Rol no encontrado: {}", roleName);
             throw new IllegalArgumentException("El rol especificado no existe: " + roleName);
+        }
+
+        // Verifica si el correo ya está registrado
+        if (usuarioDao.existsByEmail(UserDto.getEmail())) {
+            logger.warn("Intento de registro con correo ya existente: {}", UserDto.getEmail());
+            throw new IllegalArgumentException("El correo ya está registrado");
         }
 
         // Crear y asignar el usuario con el rol encontrado

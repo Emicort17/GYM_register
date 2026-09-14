@@ -11,6 +11,8 @@ import gym.demo.Gestion_persona.models.entity.UserBean;
 import gym.demo.Gestion_persona.models.repository.RoleRepository;
 import gym.demo.Gestion_persona.models.repository.UserRepository;
 
+import java.time.LocalDateTime;
+
 @Configuration
 @RequiredArgsConstructor
 @Order(1)
@@ -28,6 +30,10 @@ public class InitialConfig implements CommandLineRunner {
                 RoleBean.builder().id_role(null).name("ADMIN_ROLE").user(null).build()
 
         );
+        // El rol USER_ROLE debe existir para que el auto-registro público pueda asignarlo
+        getOrSaveRol(
+                RoleBean.builder().id_role(null).name("USER_ROLE").user(null).build()
+        );
 
         // Crear o buscar usuario administrador usando el patrón Builder
         getOrSaveUser(
@@ -36,6 +42,7 @@ public class InitialConfig implements CommandLineRunner {
                         .password(encoder.encode("admin"))
                         .status(true)
                         .blocked(false)
+                        .passwordChangedAt(LocalDateTime.now())
                         .role(adminRole)
                         .build()
         );

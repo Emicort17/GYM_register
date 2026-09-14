@@ -71,7 +71,9 @@ public class MainSecurity {
                             "http://localhost:*",
                             "http://127.0.0.1:*",
                             "https://localhost:*",
-                            "https://jade-puppy-93fafa.netlify.app"
+                            "https://jade-puppy-93fafa.netlify.app",
+                            "https://gym-register-app.vercel.app",
+                            "https://*.vercel.app"
                     ));
                     corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
                     corsConfig.setAllowedHeaders(List.of("*"));
@@ -82,6 +84,13 @@ public class MainSecurity {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(req -> req
                         .requestMatchers(WHITE_LIST).permitAll()
+                        // El propio usuario (ADMIN o USER) puede cambiar su propia contraseña;
+                        // la pertenencia de la cuenta se valida en UsuarioService.changePassword.
+                        .requestMatchers(HttpMethod.PATCH, "/api/usuarios/*/password").authenticated()
+                        // El resto de la administración de usuarios y roles es exclusiva de ADMIN,
+                        // incluida la creación de usuarios con un rol distinto de USER_ROLE.
+                        .requestMatchers("/api/usuarios/**").hasAuthority("ADMIN_ROLE")
+                        .requestMatchers("/api/roles/**").hasAuthority("ADMIN_ROLE")
                         .requestMatchers("/api/personas/**").hasAuthority("ADMIN_ROLE")
                         .requestMatchers(HttpMethod.GET, "/api/bitacora/**").hasAuthority("ADMIN_ROLE")
                         .anyRequest().authenticated()

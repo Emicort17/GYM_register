@@ -1,6 +1,7 @@
 package gym.demo.Gestion_persona.models.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import gym.demo.Gestion_persona.models.enums.TipoPago;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -10,7 +11,7 @@ import java.time.LocalDateTime;
 
 /**
  * Representa un "pago" adjuntado a una persona.
- * Cada pago tiene una vigencia de un mes a partir de su fecha.
+ * La vigencia del pago depende de su tipo (mensual, trimestral, semestral o anual).
  */
 @Getter
 @Setter
@@ -19,7 +20,8 @@ import java.time.LocalDateTime;
 @Entity
 @Builder
 @ToString
-@Table(name = "registro")
+@Table(name = "registro",
+        uniqueConstraints = @UniqueConstraint(name = "uk_registro_persona_fecha", columnNames = {"persona_id", "fecha_pago"}))
 public class RegistroBean {
 
     @Id
@@ -31,11 +33,17 @@ public class RegistroBean {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private PersonBean persona;
 
-    // Fecha en la que se realizó el pago
+    // Fecha en la que se realizó el pago. No puede repetirse para la misma persona
+    // (ver restricción UNIQUE arriba y la validación de negocio en RegistroService).
     @Column(name = "fecha_pago", columnDefinition = "DATETIME", nullable = false)
     private LocalDate fechaPago;
 
-    // Fecha en la que vence el pago (fechaPago + 1 mes)
+    // Periodicidad del pago: determina cuántos meses de vigencia otorga
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_pago")
+    private TipoPago tipoPago;
+
+    // Fecha en la que vence el pago (fechaPago + meses según tipoPago)
     @Column(name = "fecha_vencimiento", columnDefinition = "DATETIME", nullable = false)
     private LocalDate fechaVencimiento;
 

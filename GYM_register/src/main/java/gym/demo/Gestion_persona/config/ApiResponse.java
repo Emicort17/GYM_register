@@ -5,6 +5,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.http.HttpStatus;
 
+import java.util.Map;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -14,6 +16,7 @@ public class ApiResponse {
     private HttpStatus status;
     private boolean error;
     private String message;
+    private Map<String, String> errors;
 
     public ApiResponse(Object data, HttpStatus status) {
         this.data = data;
@@ -24,5 +27,12 @@ public class ApiResponse {
         this.status = status;
         this.error = error;
         this.message = message;
+    }
+
+    public ApiResponse(HttpStatus status, boolean error, String message, Map<String, String> errors){
+        this.status = status;
+        this.error = error;
+        this.message = message;
+        this.errors = errors;
     }
 }
