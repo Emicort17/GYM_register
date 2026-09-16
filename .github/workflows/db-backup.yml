@@ -1,0 +1,45 @@
+name: Backup de la base de datos a Google Drive
+
+on:
+  schedule:
+    # 08:00 UTC = 02:00 hora de Mexico (UTC-6) todos los dias
+    - cron: "0 8 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar cliente de MySQL
+        run: sudo apt-get update && sudo apt-get install -y mysql-client
+
+      - name: Generar dump
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          chmod +x scripts/backup/backup_db.sh
+          ./scripts/backup/backup_db.sh ./backups
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias de Google Drive API
+        run: pip install --quiet -r scripts/backup/requirements.txt
+
+      - name: Subir a Google Drive y aplicar retencion
+        env:
+          GDRIVE_SA_KEY_JSON: ${{ secrets.GDRIVE_SA_KEY_JSON }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+          RETENTION_COUNT: "14"
+        run: |
+          FILE=$(ls -t ./backups/*.sql.gz | head -n1)
+          python scripts/backup/drive_sync.py upload "$FILE"

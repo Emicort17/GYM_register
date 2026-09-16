@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import gym.demo.Gestion_persona.config.ApiResponse;
 import gym.demo.Gestion_persona.models.entity.PersonBean;
 import gym.demo.Gestion_persona.models.repository.PersonRepository;
+import gym.demo.Gestion_persona.models.repository.RegistroRepository;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -19,6 +20,7 @@ import java.util.Optional;
 @AllArgsConstructor
 public class PersonService {
     private final PersonRepository repository;
+    private final RegistroRepository registroRepository;
     private final RegistroService registroService;
     private final BitacoraService bitacoraService;
 
@@ -127,6 +129,8 @@ public class PersonService {
     public ResponseEntity<ApiResponse> delete(Integer id) {
         Optional<PersonBean> foundPerson = repository.findById(id);
         if (foundPerson.isPresent()) {
+            // Elimina primero los pagos asociados para evitar la violación de la FK registro.persona_id
+            registroRepository.deleteByPersonaId(id);
             repository.deleteById(id);
             bitacoraService.registrar("ELIMINAR_PERSONA", "persona", id, "Baja de persona: " + foundPerson.get().getEmail());
             return new ResponseEntity<>(

@@ -22,4 +22,7 @@ public interface RegistroRepository extends JpaRepository<RegistroBean, Integer>
 
     // Evita registrar dos veces el pago de la misma persona en la misma fecha
     boolean existsByPersonaIdAndFechaPago(Integer personaId, LocalDate fechaPago);
+
+    // Elimina todos los pagos de una persona (usado al eliminar la persona, para evitar el error de FK)
+    void deleteByPersonaId(Integer personaId);
 }

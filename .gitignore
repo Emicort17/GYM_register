@@ -15,3 +15,8 @@
 *.iml
 .DS_Store
 Thumbs.db
+
+# Backups de la base de datos (contienen datos reales, no se versionan)
+/backups/
+*.sql
+*.sql.gz
