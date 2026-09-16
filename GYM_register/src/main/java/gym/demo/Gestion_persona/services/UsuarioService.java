@@ -176,11 +176,19 @@ public class UsuarioService {
     public UserDto createUsuarioByRole(UserDto UserDto, String roleName) {
         logger.info("Buscando rol con nombre: {}", roleName);
 
-        // Buscar el rol en la base de datos
-        Optional<RoleBean> role = roleDao.findByName(roleName);
-        if (!role.isPresent()) {
-            logger.error("Rol no encontrado: {}", roleName);
-            throw new IllegalArgumentException("El rol especificado no existe: " + roleName);
+        // Buscar el rol en la base de datos o crearlo automáticamente si es un rol de sistema
+        Optional<RoleBean> roleOpt = roleDao.findByName(roleName);
+        RoleBean role;
+        if (roleOpt.isEmpty()) {
+            if ("USER_ROLE".equals(roleName) || "ADMIN_ROLE".equals(roleName)) {
+                logger.info("El rol {} no existía en la BD, creándolo automáticamente...", roleName);
+                role = roleDao.saveAndFlush(RoleBean.builder().name(roleName).build());
+            } else {
+                logger.error("Rol no encontrado: {}", roleName);
+                throw new IllegalArgumentException("El rol especificado no existe: " + roleName);
+            }
+        } else {
+            role = roleOpt.get();
         }
 
         // Verifica si el correo ya está registrado
@@ -195,14 +203,14 @@ public class UsuarioService {
         setUsuarioData(usuario, UserDto, true);
 
         // Asignar el rol encontrado
-        usuario.setRole(role.get());
-        logger.info("Rol asignado: {}", role.get().getName());
+        usuario.setRole(role);
+        logger.info("Rol asignado: {}", role.getName());
 
         // Guardar el usuario en la base de datos
         UserBean savedUsuario = usuarioDao.save(usuario);
         logger.info("Usuario creado con éxito: ID {}", savedUsuario.getId_usuario());
         bitacoraService.registrar("CREAR_USUARIO", "usuario", savedUsuario.getId_usuario(),
-                "Alta de usuario: " + savedUsuario.getEmail() + " con rol " + role.get().getName());
+                "Alta de usuario: " + savedUsuario.getEmail() + " con rol " + role.getName());
 
         return toDTO(savedUsuario);
     }

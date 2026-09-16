@@ -11,7 +11,10 @@ import java.util.Optional;
 @Repository
 public interface RegistroRepository extends JpaRepository<RegistroBean, Integer> {
 
-    // Último pago registrado para una persona (el que define su estado actual)
+    // Último pago registrado por fecha de vencimiento
+    Optional<RegistroBean> findFirstByPersonaIdOrderByFechaVencimientoDesc(Integer personaId);
+
+    // Último pago registrado por fecha de pago
     Optional<RegistroBean> findFirstByPersonaIdOrderByFechaPagoDesc(Integer personaId);
 
     // Historial completo de pagos de una persona, del más reciente al más antiguo

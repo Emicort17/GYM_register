@@ -11,6 +11,7 @@ import gym.demo.Gestion_persona.models.entity.UserBean;
 import gym.demo.Gestion_persona.models.repository.RoleRepository;
 import gym.demo.Gestion_persona.models.repository.UserRepository;
 
+import org.springframework.jdbc.core.JdbcTemplate;
 import java.time.LocalDateTime;
 
 @Configuration
@@ -21,10 +22,17 @@ public class InitialConfig implements CommandLineRunner {
     private final RoleRepository roleRepository;
     private final UserRepository usuarioRepository;
     private final PasswordEncoder encoder;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     @Transactional
     public void run(String... args) {
+        // Eliminar restricción de clave única en la tabla de registro si existe en MySQL
+        try {
+            jdbcTemplate.execute("ALTER TABLE registro DROP INDEX uk_registro_persona_fecha");
+        } catch (Exception ignored) {
+            // La restricción ya no existe o la tabla es nueva
+        }
         // Crear o buscar roles usando el patrón Builder
         RoleBean adminRole = getOrSaveRol(
                 RoleBean.builder().id_role(null).name("ADMIN_ROLE").user(null).build()

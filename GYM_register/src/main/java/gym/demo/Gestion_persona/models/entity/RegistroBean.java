@@ -20,8 +20,7 @@ import java.time.LocalDateTime;
 @Entity
 @Builder
 @ToString
-@Table(name = "registro",
-        uniqueConstraints = @UniqueConstraint(name = "uk_registro_persona_fecha", columnNames = {"persona_id", "fecha_pago"}))
+@Table(name = "registro")
 public class RegistroBean {
 
     @Id

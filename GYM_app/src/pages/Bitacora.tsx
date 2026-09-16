@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { bitacoraService, type Bitacora as BitacoraType } from '../services/bitacoraService';
+import { DataTable } from '../components/DataTable';
 
 export const Bitacora: React.FC = () => {
   const [logs, setLogs] = useState<BitacoraType[]>([]);
-  const [filteredLogs, setFilteredLogs] = useState<BitacoraType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
 
   const [selectedLog, setSelectedLog] = useState<BitacoraType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -17,7 +16,6 @@ export const Bitacora: React.FC = () => {
       const data = await bitacoraService.getAll();
       const list = Array.isArray(data) ? data : [];
       setLogs(list);
-      setFilteredLogs(list);
     } catch (err: any) {
       setError(err.message || 'Error al obtener la bitácora');
     } finally {
@@ -28,23 +26,6 @@ export const Bitacora: React.FC = () => {
   useEffect(() => {
     fetchBitacora();
   }, []);
-
-  useEffect(() => {
-    if (!searchTerm.trim()) {
-      setFilteredLogs(logs);
-      return;
-    }
-    const term = searchTerm.toLowerCase();
-    setFilteredLogs(
-      logs.filter(
-        (item) =>
-          item.accion?.toLowerCase().includes(term) ||
-          item.tablaAfectada?.toLowerCase().includes(term) ||
-          item.detalles?.toLowerCase().includes(term) ||
-          item.usuario?.email?.toLowerCase().includes(term)
-      )
-    );
-  }, [searchTerm, logs]);
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return 'N/A';
@@ -77,7 +58,7 @@ export const Bitacora: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  if (loading) return <div style={{ padding: '1rem', color: 'var(--text-muted)' }}>Cargando bitácora de auditoría...</div>;
+  if (loading && logs.length === 0) return <div style={{ padding: '1rem', color: 'var(--text-muted)' }}>Cargando bitácora de auditoría...</div>;
   if (error) return <div style={{ padding: '1rem', color: '#b91c1c' }}>{error}</div>;
 
   return (
@@ -89,66 +70,97 @@ export const Bitacora: React.FC = () => {
             Historial de eventos y movimientos de la aplicación
           </p>
         </div>
-        <div style={{ width: '300px' }}>
-          <input
-            type="text"
-            placeholder="Buscar por usuario, acción o detalles..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
       </div>
 
-      <div className="card table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Fecha</th>
-              <th>Usuario</th>
-              <th>Acción</th>
-              <th>Tabla</th>
-              <th>Registro ID</th>
-              <th>Detalles</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredLogs.length > 0 ? (
-              filteredLogs.map((log) => (
-                <tr key={log.id_bitacora}>
-                  <td>#{log.id_bitacora}</td>
-                  <td>{formatDate(log.fecha)}</td>
-                  <td>
-                    <strong>{log.usuario?.email || 'Sistema'}</strong>
-                  </td>
-                  <td>
-                    <span className={`badge ${getActionBadgeClass(log.accion)}`}>
-                      {log.accion}
-                    </span>
-                  </td>
-                  <td>{log.tablaAfectada || '-'}</td>
-                  <td>{log.registroAfectadoId ? `#${log.registroAfectadoId}` : '-'}</td>
-                  <td>
-                    <button
-                      className="btn-outline"
-                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
-                      onClick={() => handleOpenDetail(log)}
-                    >
-                      Mostrar detalle
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
-                  No se encontraron registros de auditoría
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable<BitacoraType>
+        data={logs}
+        loading={loading}
+        keyExtractor={(item) => item.id_bitacora}
+        searchPlaceholder="Buscar por usuario, acción, tabla o detalles..."
+        getSearchValue={(item) =>
+          `${item.accion || ''} ${item.tablaAfectada || ''} ${item.detalles || ''} ${item.usuario?.email || ''}`
+        }
+        enableDateRangeFilter={true}
+        getDateValue={(item) => item.fecha}
+        selectFilters={[
+          {
+            id: 'accion',
+            label: 'Acción',
+            options: [
+              { label: 'Crear Persona', value: 'CREAR_PERSONA' },
+              { label: 'Registrar Pago', value: 'REGISTRAR_PAGO' },
+              { label: 'Actualizar Persona', value: 'ACTUALIZAR_PERSONA' },
+              { label: 'Eliminar Persona', value: 'ELIMINAR_PERSONA' },
+            ],
+            filterFn: (item, val) => (item.accion || '').toUpperCase().includes(val.toUpperCase()),
+          },
+        ]}
+        defaultSortKey="fecha"
+        defaultSortOrder="desc"
+        emptyMessage="No se encontraron registros de auditoría"
+        columns={[
+          {
+            key: 'id_bitacora',
+            label: 'ID',
+            sortable: true,
+            sortType: 'number',
+            render: (log) => `#${log.id_bitacora}`,
+          },
+          {
+            key: 'fecha',
+            label: 'Fecha',
+            sortable: true,
+            sortType: 'date',
+            render: (log) => formatDate(log.fecha),
+          },
+          {
+            key: 'usuario',
+            label: 'Usuario',
+            sortable: true,
+            sortType: 'string',
+            getValue: (log) => log.usuario?.email || 'Sistema',
+            render: (log) => <strong>{log.usuario?.email || 'Sistema'}</strong>,
+          },
+          {
+            key: 'accion',
+            label: 'Acción',
+            sortable: true,
+            sortType: 'string',
+            render: (log) => (
+              <span className={`badge ${getActionBadgeClass(log.accion)}`}>
+                {log.accion}
+              </span>
+            ),
+          },
+          {
+            key: 'tablaAfectada',
+            label: 'Tabla',
+            sortable: true,
+            render: (log) => log.tablaAfectada || '-',
+          },
+          {
+            key: 'registroAfectadoId',
+            label: 'Registro ID',
+            sortable: true,
+            sortType: 'number',
+            render: (log) => (log.registroAfectadoId ? `#${log.registroAfectadoId}` : '-'),
+          },
+          {
+            key: 'detalles',
+            label: 'Detalles',
+            sortable: false,
+            render: (log) => (
+              <button
+                className="btn-outline"
+                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                onClick={() => handleOpenDetail(log)}
+              >
+                Mostrar detalle
+              </button>
+            ),
+          },
+        ]}
+      />
 
       {isModalOpen && selectedLog && (
         <div className="modal-backdrop" onClick={() => setIsModalOpen(false)}>

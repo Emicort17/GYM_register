@@ -28,10 +28,13 @@ export const personasService = {
     method: 'DELETE'
   }),
   getPagos: (id: number) => fetchWithAuth(`/personas/${id}/pagos`),
-  registrarPago: (personaId: number, fechaPago?: string) =>
+  registrarPago: (personaId: number, fechaPago?: string, tipoPago?: 'MENSUAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL') =>
     fetchWithAuth(`/personas/${personaId}/pagos`, {
       method: 'POST',
-      body: JSON.stringify(fechaPago ? { fechaPago } : {})
+      body: JSON.stringify({
+        ...(fechaPago ? { fechaPago } : {}),
+        ...(tipoPago ? { tipoPago } : {})
+      })
     })
 };
 

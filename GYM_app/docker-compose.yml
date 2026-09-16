@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  gym_frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        API_HOST: localhost
+        API_PORT: 8000
+        API_BASE: /api
+        API_PROTOCOL: http
+    container_name: gestion_persona_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"

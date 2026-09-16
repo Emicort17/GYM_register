@@ -2,14 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { personasService, type Persona } from '../services/personasService';
 import { PersonaModal, type PersonaSaveOptions } from '../components/PersonaModal';
 import { PagosModal } from '../components/PagosModal';
+import { DataTable } from '../components/DataTable';
 
 export const Personas: React.FC = () => {
   const [personas, setPersonas] = useState<Persona[]>([]);
-  const [filteredPersonas, setFilteredPersonas] = useState<Persona[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    if (successMsg) {
+      const timer = setTimeout(() => {
+        setSuccessMsg('');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMsg]);
 
   // Modales state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -25,7 +33,10 @@ export const Personas: React.FC = () => {
       const data = await personasService.getAll();
       const list = Array.isArray(data) ? data : data?.data || [];
       setPersonas(list);
-      setFilteredPersonas(list);
+      setSelectedPersonaForPagos(prev => {
+        if (!prev) return null;
+        return list.find((p: Persona) => p.id === prev.id) || prev;
+      });
     } catch (err: any) {
       setError(err.message || 'Error al obtener personas');
     } finally {
@@ -36,22 +47,6 @@ export const Personas: React.FC = () => {
   useEffect(() => {
     fetchPersonas();
   }, []);
-
-  useEffect(() => {
-    if (!searchTerm.trim()) {
-      setFilteredPersonas(personas);
-      return;
-    }
-    const term = searchTerm.toLowerCase();
-    setFilteredPersonas(
-      personas.filter(
-        (p) =>
-          p.name?.toLowerCase().includes(term) ||
-          p.email?.toLowerCase().includes(term) ||
-          p.telefono?.toLowerCase().includes(term)
-      )
-    );
-  }, [searchTerm, personas]);
 
   const handleCreateOpen = () => {
     setEditingPersona(null);
@@ -78,7 +73,7 @@ export const Personas: React.FC = () => {
 
       if (options?.registrarPagoInmediato && createdId) {
         try {
-          await personasService.registrarPago(createdId, options.fechaPago);
+          await personasService.registrarPago(createdId, options.fechaPago, options.tipoPago);
           setSuccessMsg('Persona registrada y primer pago procesado correctamente');
         } catch (pagoErr: any) {
           setError('Persona creada pero falló el registro del pago: ' + (pagoErr.message || ''));
@@ -121,28 +116,6 @@ export const Personas: React.FC = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h1 style={{ margin: 0, color: 'var(--primary)', fontSize: '1.6rem', fontWeight: 700 }}>Gestión de Personas y Pagos</h1>
-          <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Registro de socios, cobro de mensualidades y control de vencimientos
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <input
-            type="text"
-            placeholder="Buscar por nombre, correo o teléfono..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ width: '280px' }}
-          />
-          <button className="btn-primary" onClick={handleCreateOpen}>
-            + Nueva Persona
-          </button>
-        </div>
-      </div>
-
       {successMsg && (
         <div style={{ backgroundColor: '#e8f5e9', color: '#2e7d32', padding: '0.8rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.9rem' }}>
           {successMsg}
@@ -155,79 +128,119 @@ export const Personas: React.FC = () => {
         </div>
       )}
 
-      <div className="card table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Nombre Completo</th>
-              <th>Correo</th>
-              <th>Teléfono</th>
-              <th>Último Pago</th>
-              <th>Vencimiento</th>
-              <th>Estado Pago</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPersonas.length > 0 ? (
-              filteredPersonas.map((p) => {
-                const badgeClass = getBadgeClass(p.estado);
-
-                return (
-                  <tr key={p.id}>
-                    <td>#{p.id}</td>
-                    <td>
-                      <strong>{p.name}</strong>
-                    </td>
-                    <td>{p.email}</td>
-                    <td>{p.telefono || '-'}</td>
-                    <td>{p.ultimoPago || <span style={{ color: 'var(--text-muted)' }}>Sin pagos</span>}</td>
-                    <td>{p.fechaVencimiento || '-'}</td>
-                    <td>
-                      <span className={`badge ${badgeClass}`}>
-                        {p.estado || 'Activo'}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                        <button
-                          className="btn-primary"
-                          style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem' }}
-                          onClick={() => handleOpenPagos(p)}
-                          title="Realizar o ver pagos de mensualidad"
-                        >
-                          Realizar Pago / Historial
-                        </button>
-                        <button
-                          className="btn-outline"
-                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
-                          onClick={() => handleEditOpen(p)}
-                        >
-                          Editar
-                        </button>
-                        <button
-                          className="btn-outline"
-                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', color: '#b91c1c', borderColor: '#fca5a5' }}
-                          onClick={() => handleDelete(p.id)}
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
-              <tr>
-                <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
-                  No se encontraron personas registradas
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable<Persona>
+        data={personas}
+        loading={loading}
+        keyExtractor={(p) => p.id}
+        searchPlaceholder="Buscar por nombre, correo o teléfono..."
+        getSearchValue={(p) => `${p.name || ''} ${p.email || ''} ${p.telefono || ''}`}
+        enableDateRangeFilter={true}
+        getDateValue={(p) => p.ultimoPago || p.fechaRegistro}
+        selectFilters={[
+          {
+            id: 'estado',
+            label: 'Estado',
+            options: [
+              { label: 'Activos / Verdes', value: 'Activo' },
+              { label: 'Próximos a Vencer', value: 'Proximo a vencer' },
+              { label: 'Vencidos / Rojos', value: 'Vencido' },
+            ],
+            filterFn: (p, val) => (p.estado || '').toLowerCase().includes(val.toLowerCase()),
+          },
+        ]}
+        defaultSortKey="name"
+        defaultSortOrder="asc"
+        emptyMessage="No se encontraron personas registradas"
+        extraHeaderActions={
+          <button className="btn-primary" onClick={handleCreateOpen}>
+            + Nueva Persona
+          </button>
+        }
+        columns={[
+          {
+            key: 'id',
+            label: 'ID',
+            sortable: true,
+            sortType: 'number',
+            render: (p) => `#${p.id}`,
+          },
+          {
+            key: 'name',
+            label: 'Nombre Completo',
+            sortable: true,
+            sortType: 'string',
+            render: (p) => <strong>{p.name}</strong>,
+          },
+          {
+            key: 'email',
+            label: 'Correo',
+            sortable: true,
+            sortType: 'string',
+          },
+          {
+            key: 'telefono',
+            label: 'Teléfono',
+            sortable: true,
+            render: (p) => p.telefono || '-',
+          },
+          {
+            key: 'ultimoPago',
+            label: 'Último Pago',
+            sortable: true,
+            sortType: 'date',
+            render: (p) => p.ultimoPago || <span style={{ color: 'var(--text-muted)' }}>Sin pagos</span>,
+          },
+          {
+            key: 'fechaVencimiento',
+            label: 'Vencimiento',
+            sortable: true,
+            sortType: 'date',
+            render: (p) => p.fechaVencimiento || '-',
+          },
+          {
+            key: 'estado',
+            label: 'Estado Pago',
+            sortable: true,
+            sortType: 'string',
+            render: (p) => (
+              <span className={`badge ${getBadgeClass(p.estado)}`}>
+                {p.estado || 'Activo'}
+              </span>
+            ),
+          },
+          {
+            key: 'acciones',
+            label: 'Acciones',
+            sortable: false,
+            render: (p) => (
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <button
+                  className="btn-primary"
+                  style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem' }}
+                  onClick={() => handleOpenPagos(p)}
+                  title="Realizar o ver pagos de mensualidad"
+                >
+                  Realizar Pago / Historial
+                </button>
+                <button
+                  className="btn-outline"
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                  onClick={() => handleEditOpen(p)}
+                >
+                  Editar
+                </button>
+                <button
+                  className="btn-outline"
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', color: '#b91c1c', borderColor: '#fca5a5' }}
+                  onClick={() => handleDelete(p.id)}
+                >
+                  Eliminar
+                </button>
+              </div>
+            ),
+          },
+        ]}
+      />
 
       <PersonaModal
         isOpen={isModalOpen}

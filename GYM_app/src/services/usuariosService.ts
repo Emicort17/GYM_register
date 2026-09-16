@@ -33,10 +33,16 @@ export const usuariosService = {
   },
   update: async (id: number, usuario: Partial<Usuario>): Promise<Usuario> => {
     const response = await fetchWithAuth(`/usuarios/${id}`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify(usuario)
     });
     return response.data || response;
+  },
+  changePassword: async (id: number, payload: { currentPassword: string; newPassword: string }): Promise<void> => {
+    await fetchWithAuth(`/usuarios/${id}/password`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
   },
   delete: async (id: number): Promise<void> => {
     await fetchWithAuth(`/usuarios/${id}`, {

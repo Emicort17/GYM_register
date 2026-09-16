@@ -82,6 +82,7 @@ export const UsuarioModal: React.FC<UsuarioModalProps> = ({ isOpen, onClose, onS
               <label>Rol de Usuario *</label>
               <select value={roleName} onChange={(e) => setRoleName(e.target.value)}>
                 <option value="ADMIN_ROLE">Administrador (ADMIN_ROLE)</option>
+                <option value="USER_ROLE">Empleado (USER_ROLE)</option>
               </select>
             </div>
           </div>

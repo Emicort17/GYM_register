@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -38,8 +39,6 @@ public class RegistroService {
     private final BitacoraService bitacoraService;
 
     // Registrar un nuevo pago para una persona. La vigencia depende del tipo de pago
-    // (mensual por defecto, trimestral, semestral o anual). No se permite registrar dos
-    // pagos para la misma persona en la misma fecha (evita altas duplicadas por error).
     @Transactional(rollbackFor = {SQLException.class})
     public ResponseEntity<ApiResponse> registrarPago(Integer personaId, LocalDate fechaPago, TipoPago tipoPago) {
         Optional<PersonBean> foundPersona = personRepository.findById(personaId);
@@ -53,19 +52,22 @@ public class RegistroService {
         LocalDate fecha = fechaPago != null ? fechaPago : LocalDate.now();
         TipoPago tipo = tipoPago != null ? tipoPago : TipoPago.MENSUAL;
 
-        if (repository.existsByPersonaIdAndFechaPago(personaId, fecha)) {
-            return new ResponseEntity<>(
-                    new ApiResponse(HttpStatus.BAD_REQUEST, true,
-                            "Ya existe un pago registrado para esta persona en la fecha " + fecha),
-                    HttpStatus.BAD_REQUEST
-            );
+        // Calcular fecha de vencimiento: si la persona ya tiene un pago activo en el futuro, se extiende a partir de esa fecha.
+        Optional<RegistroBean> ultimoRegistro = repository.findFirstByPersonaIdOrderByFechaVencimientoDesc(personaId);
+        LocalDate baseFecha = fecha;
+        if (ultimoRegistro.isPresent() && ultimoRegistro.get().getFechaVencimiento() != null) {
+            LocalDate ultimoVencimiento = ultimoRegistro.get().getFechaVencimiento();
+            if (ultimoVencimiento.isAfter(fecha)) {
+                baseFecha = ultimoVencimiento;
+            }
         }
+        LocalDate fechaVencimiento = baseFecha.plusMonths(tipo.getMeses());
 
         RegistroBean registro = RegistroBean.builder()
                 .persona(foundPersona.get())
                 .fechaPago(fecha)
                 .tipoPago(tipo)
-                .fechaVencimiento(fecha.plusMonths(tipo.getMeses()))
+                .fechaVencimiento(fechaVencimiento)
                 .fechaCreacion(LocalDateTime.now())
                 .build();
 
@@ -90,24 +92,21 @@ public class RegistroService {
         }
         List<RegistroDto> historial = repository.findByPersonaIdOrderByFechaPagoDesc(personaId).stream()
                 .map(r -> RegistroDto.fromEntity(r, calcularEstado(r.getFechaVencimiento())))
-                .toList();
+                .collect(Collectors.toList());
 
         return new ResponseEntity<>(new ApiResponse(historial, HttpStatus.OK), HttpStatus.OK);
     }
 
     // Calcula el semáforo a partir de la fecha de vencimiento del último pago.
-    // - ROJO: ya venció o vence hoy
-    // - AMARILLO: falta 1 semana o menos para vencer
-    // - VERDE: falta más de una semana, o nunca se ha registrado un pago
     public String calcularEstado(LocalDate fechaVencimiento) {
         if (fechaVencimiento == null) {
             return VERDE;
         }
-        long diasRestantes = ChronoUnit.DAYS.between(LocalDate.now(), fechaVencimiento);
-        if (diasRestantes <= 0) {
+        LocalDate hoy = LocalDate.now();
+        if (fechaVencimiento.isBefore(hoy)) {
             return ROJO;
         }
-        if (diasRestantes <= DIAS_AVISO) {
+        if (fechaVencimiento.isBefore(hoy.plusDays(7)) || fechaVencimiento.isEqual(hoy.plusDays(7))) {
             return AMARILLO;
         }
         return VERDE;
@@ -116,7 +115,7 @@ public class RegistroService {
     // Construye el DTO enriquecido de una persona (fecha de registro + estado de pago)
     @Transactional(readOnly = true)
     public PersonaEstadoDto toEstadoDto(PersonBean persona) {
-        Optional<RegistroBean> ultimo = repository.findFirstByPersonaIdOrderByFechaPagoDesc(persona.getId());
+        Optional<RegistroBean> ultimo = repository.findFirstByPersonaIdOrderByFechaVencimientoDesc(persona.getId());
 
         LocalDate ultimoPago = ultimo.map(RegistroBean::getFechaPago).orElse(null);
         LocalDate vencimiento = ultimo.map(RegistroBean::getFechaVencimiento).orElse(null);

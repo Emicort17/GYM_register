@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { personasService, type Persona } from '../services/personasService';
+import { DataTable } from './DataTable';
 
 interface PagosModalProps {
   isOpen: boolean;
@@ -21,8 +22,18 @@ export const PagosModal: React.FC<PagosModalProps> = ({
   // Registrar nuevo pago state
   const [showAddForm, setShowAddForm] = useState(false);
   const [fechaPago, setFechaPago] = useState(new Date().toISOString().split('T')[0]);
+  const [tipoPago, setTipoPago] = useState<'MENSUAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL'>('MENSUAL');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+
+  useEffect(() => {
+    if (successMsg) {
+      const timer = setTimeout(() => {
+        setSuccessMsg('');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMsg]);
 
   const fetchPagos = async () => {
     if (!persona) return;
@@ -44,6 +55,7 @@ export const PagosModal: React.FC<PagosModalProps> = ({
       fetchPagos();
       setShowAddForm(false);
       setFechaPago(new Date().toISOString().split('T')[0]);
+      setTipoPago('MENSUAL');
       setSuccessMsg('');
       setError('');
     }
@@ -58,7 +70,7 @@ export const PagosModal: React.FC<PagosModalProps> = ({
       setIsSubmitting(true);
       setError('');
       setSuccessMsg('');
-      await personasService.registrarPago(persona.id, fechaPago);
+      await personasService.registrarPago(persona.id, fechaPago, tipoPago);
       setSuccessMsg('¡Pago registrado con éxito!');
       setShowAddForm(false);
       await fetchPagos();
@@ -82,7 +94,7 @@ export const PagosModal: React.FC<PagosModalProps> = ({
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '650px' }}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '680px' }}>
         <div className="modal-header">
           <h3>Historial de Pagos - {persona.name}</h3>
           <button className="modal-close-btn" onClick={onClose}>&times;</button>
@@ -101,7 +113,7 @@ export const PagosModal: React.FC<PagosModalProps> = ({
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
               Estado actual: <strong style={{ color: 'var(--text-main)' }}>{persona.estado || 'Sin Registro'}</strong>
             </span>
@@ -130,11 +142,11 @@ export const PagosModal: React.FC<PagosModalProps> = ({
               }}
             >
               <h4 style={{ margin: '0 0 0.8rem 0', color: 'var(--primary)', fontSize: '0.95rem' }}>
-                Nuevo Pago de Mensualidad
+                Nuevo Pago de Suscripción / Mensualidad
               </h4>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                <div className="form-group" style={{ flex: 1, minWidth: '180px', marginBottom: 0 }}>
-                  <label htmlFor="fechaPagoModal">Fecha de Pago</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label htmlFor="fechaPagoModal">Fecha de Pago *</label>
                   <input
                     type="date"
                     id="fechaPagoModal"
@@ -143,59 +155,86 @@ export const PagosModal: React.FC<PagosModalProps> = ({
                     required
                   />
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => setShowAddForm(false)}
-                    disabled={isSubmitting}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label htmlFor="tipoPagoModal">Plan / Duración *</label>
+                  <select
+                    id="tipoPagoModal"
+                    value={tipoPago}
+                    onChange={(e) => setTipoPago(e.target.value as any)}
                   >
-                    Cancelar
-                  </button>
-                  <button type="submit" className="btn-primary" disabled={isSubmitting}>
-                    {isSubmitting ? 'Guardando...' : 'Confirmar Pago'}
-                  </button>
+                    <option value="MENSUAL">Mensual (1 Mes)</option>
+                    <option value="TRIMESTRAL">Trimestral (3 Meses)</option>
+                    <option value="SEMESTRAL">Semestral (6 Meses)</option>
+                    <option value="ANUAL">Anual (12 Meses)</option>
+                  </select>
                 </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowAddForm(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? 'Guardando...' : 'Confirmar Pago'}
+                </button>
               </div>
             </form>
           )}
 
-          {loading ? (
-            <p style={{ color: 'var(--text-muted)' }}>Cargando historial de pagos...</p>
-          ) : pagos.length > 0 ? (
-            <div className="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th># ID</th>
-                    <th>Fecha de Pago</th>
-                    <th>Vencimiento</th>
-                    <th>Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagos.map((p, idx) => (
-                    <tr key={p.id || idx}>
-                      <td>#{p.id || idx + 1}</td>
-                      <td>
-                        <strong>{p.fechaPago || p.fecha || 'N/A'}</strong>
-                      </td>
-                      <td>{p.fechaVencimiento || '1 mes posterior'}</td>
-                      <td>
-                        <span className={`badge ${getBadgeClass(p.estado)}`}>
-                          {p.estado || 'Activo'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)' }}>
-              No se registran pagos previos para esta persona.
-            </div>
-          )}
+          <DataTable<any>
+            data={pagos}
+            loading={loading}
+            keyExtractor={(p, idx) => p.id || idx}
+            searchPlaceholder="Buscar por fecha..."
+            defaultSortKey="fechaPago"
+            defaultSortOrder="desc"
+            defaultPageSize={5}
+            emptyMessage="No se registran pagos previos para esta persona."
+            columns={[
+              {
+                key: 'id',
+                label: '# ID',
+                sortable: true,
+                sortType: 'number',
+                render: (p: any) => `#${p.id || '-'}`,
+              },
+              {
+                key: 'fechaPago',
+                label: 'Fecha de Pago',
+                sortable: true,
+                sortType: 'date',
+                getValue: (p) => p.fechaPago || p.fecha,
+                render: (p) => <strong>{p.fechaPago || p.fecha || 'N/A'}</strong>,
+              },
+              {
+                key: 'fechaVencimiento',
+                label: 'Vencimiento',
+                sortable: true,
+                sortType: 'date',
+                render: (p) => p.fechaVencimiento || '1 mes posterior',
+              },
+              {
+                key: 'tipoPago',
+                label: 'Tipo Plan',
+                sortable: true,
+                render: (p) => p.tipoPago || 'MENSUAL',
+              },
+              {
+                key: 'estado',
+                label: 'Estado',
+                sortable: true,
+                render: (p) => (
+                  <span className={`badge ${getBadgeClass(p.estado)}`}>
+                    {p.estado || 'Activo'}
+                  </span>
+                ),
+              },
+            ]}
+          />
         </div>
 
         <div className="modal-footer">
@@ -207,3 +246,4 @@ export const PagosModal: React.FC<PagosModalProps> = ({
     </div>
   );
 };
+

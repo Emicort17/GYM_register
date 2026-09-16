@@ -4,6 +4,7 @@ import type { Persona } from '../services/personasService';
 export interface PersonaSaveOptions {
   registrarPagoInmediato?: boolean;
   fechaPago?: string;
+  tipoPago?: 'MENSUAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL';
 }
 
 interface PersonaModalProps {
@@ -28,6 +29,7 @@ export const PersonaModal: React.FC<PersonaModalProps> = ({
   // Pago inicial opcional
   const [registrarPagoInmediato, setRegistrarPagoInmediato] = useState(true);
   const [fechaPago, setFechaPago] = useState(new Date().toISOString().split('T')[0]);
+  const [tipoPago, setTipoPago] = useState<'MENSUAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL'>('MENSUAL');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -49,6 +51,7 @@ export const PersonaModal: React.FC<PersonaModalProps> = ({
       setEdad(25);
       setRegistrarPagoInmediato(true); // Default to true when creating new persona
       setFechaPago(new Date().toISOString().split('T')[0]);
+      setTipoPago('MENSUAL');
     }
     setError('');
   }, [initialData, isOpen]);
@@ -70,7 +73,8 @@ export const PersonaModal: React.FC<PersonaModalProps> = ({
 
       const saveOptions: PersonaSaveOptions = {
         registrarPagoInmediato: !initialData && registrarPagoInmediato,
-        fechaPago
+        fechaPago,
+        tipoPago
       };
 
       await onSave(personaPayload, saveOptions);
@@ -184,18 +188,30 @@ export const PersonaModal: React.FC<PersonaModalProps> = ({
                 </label>
 
                 {registrarPagoInmediato && (
-                  <div className="form-group" style={{ marginTop: '0.8rem', marginBottom: 0 }}>
-                    <label htmlFor="fechaPagoInicial">Fecha del Pago *</label>
-                    <input
-                      id="fechaPagoInicial"
-                      type="date"
-                      required={registrarPagoInmediato}
-                      value={fechaPago}
-                      onChange={(e) => setFechaPago(e.target.value)}
-                    />
-                    <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '0.2rem' }}>
-                      El pago otorgará 1 mes de acceso activo a partir de la fecha seleccionada.
-                    </small>
+                  <div style={{ marginTop: '0.8rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label htmlFor="fechaPagoInicial">Fecha del Pago *</label>
+                      <input
+                        id="fechaPagoInicial"
+                        type="date"
+                        required={registrarPagoInmediato}
+                        value={fechaPago}
+                        onChange={(e) => setFechaPago(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label htmlFor="tipoPagoInicial">Plan / Cantidad de Meses *</label>
+                      <select
+                        id="tipoPagoInicial"
+                        value={tipoPago}
+                        onChange={(e) => setTipoPago(e.target.value as any)}
+                      >
+                        <option value="MENSUAL">Mensual (1 Mes)</option>
+                        <option value="TRIMESTRAL">Trimestral (3 Meses)</option>
+                        <option value="SEMESTRAL">Semestral (6 Meses)</option>
+                        <option value="ANUAL">Anual (12 Meses)</option>
+                      </select>
+                    </div>
                   </div>
                 )}
               </div>

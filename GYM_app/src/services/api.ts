@@ -1,4 +1,11 @@
-export const API_URL = '/api';
+const apiHost = import.meta.env.VITE_API_HOST;
+const apiPort = import.meta.env.VITE_API_PORT;
+const apiBase = import.meta.env.VITE_API_BASE || '/api';
+const apiProtocol = import.meta.env.VITE_API_PROTOCOL || 'http';
+
+export const API_URL = apiHost
+  ? `${apiProtocol}://${apiHost}${apiPort ? `:${apiPort}` : ''}${apiBase}`
+  : (import.meta.env.VITE_API_URL || '/api');
 
 // Función para obtener el token del localStorage
 export const getAuthToken = () => localStorage.getItem('gym_auth_token');
