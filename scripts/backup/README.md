@@ -8,29 +8,47 @@ se borran automaticamente de Drive.
 
 ## Configuracion (una sola vez)
 
-### 1. Crear la cuenta de servicio de Google
+> Nota: la primera version de este backup usaba una "cuenta de servicio" de Google,
+> pero estas no tienen cuota de almacenamiento propia en Drive fuera de Google
+> Workspace (error `Service Accounts do not have storage quota`). Por eso el script
+> se autentica como tu propia cuenta de Google via OAuth: los backups se guardan en
+> tu Drive normal, con tu cuota normal.
 
-1. Entra a [Google Cloud Console](https://console.cloud.google.com/) con tu cuenta de Google
-   (la misma donde esta el Drive donde queres guardar los backups) y crea un proyecto
-   (o usa uno existente).
-2. Habilita la **Google Drive API** para ese proyecto (menu "APIs y servicios" > "Biblioteca").
-3. Ve a "APIs y servicios" > "Credenciales" > "Crear credenciales" > "Cuenta de servicio".
-   Dale cualquier nombre (ej. `gym-backups`) y creala. No necesita roles adicionales.
-4. Dentro de la cuenta de servicio creada, ve a la pestana "Claves" > "Agregar clave" >
-   "Crear clave nueva" > tipo **JSON**. Se descarga un archivo `.json` a tu compu:
-   **guardalo, es la unica vez que lo podes descargar**.
-5. Copia el campo `client_email` del JSON (algo como
-   `gym-backups@tu-proyecto.iam.gserviceaccount.com`).
+### 1. Crear las credenciales OAuth en Google Cloud
 
-### 2. Crear y compartir la carpeta de Drive
+1. Entra a [Google Cloud Console](https://console.cloud.google.com/) con tu cuenta de
+   Google (la misma donde esta el Drive donde queres guardar los backups) y crea un
+   proyecto (o usa uno existente).
+2. Habilita la **Google Drive API** (menu "APIs y servicios" > "Biblioteca").
+3. Ve a "APIs y servicios" > "Pantalla de consentimiento OAuth": tipo **Externo**,
+   completa el nombre de la app y tu correo, y agregate a vos mismo en
+   "Usuarios de prueba" (mientras la app este en modo prueba, solo esos usuarios
+   pueden autorizarla, lo cual esta bien para este uso).
+4. Ve a "APIs y servicios" > "Credenciales" > "Crear credenciales" > "ID de cliente
+   de OAuth" > tipo de aplicacion **Aplicacion de escritorio**. Dale cualquier nombre
+   y creala.
+5. Descarga el JSON de esas credenciales, guardalo como
+   `scripts/backup/client_secret.json` (ya esta en `.gitignore`, no se sube a git).
 
-1. En tu Google Drive, crea una carpeta, por ejemplo `GYM Backups`.
-2. Click derecho > "Compartir" > agrega el `client_email` de la cuenta de servicio
-   (paso anterior) con permiso de **Editor**.
-3. Abre la carpeta y copia el ID desde la URL:
-   `https://drive.google.com/drive/folders/ESTE_ES_EL_ID`
+### 2. Generar el refresh token (una sola vez, desde tu compu)
 
-### 3. Agregar los secrets en GitHub
+```bash
+pip install -r scripts/backup/requirements.txt
+python scripts/backup/get_refresh_token.py
+```
+
+Se abre el navegador: inicia sesion con tu cuenta de Google y autoriza el permiso
+("Ver y administrar solo los archivos de Drive que crees con esta app"). Al terminar,
+la terminal imprime tres valores (`GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`,
+`GOOGLE_OAUTH_REFRESH_TOKEN`) que vas a usar en el siguiente paso.
+
+### 3. Crear la carpeta de Drive
+
+En tu Google Drive, crea una carpeta, por ejemplo `GYM Backups`, y copia el ID desde
+la URL: `https://drive.google.com/drive/folders/ESTE_ES_EL_ID`. No hace falta
+compartirla con nadie, ya que el script va a entrar con tu propia cuenta.
+
+### 4. Agregar los secrets en GitHub
 
 En el repo [`Emicort17/GYM_register`](https://github.com/Emicort17/GYM_register) ve a
 **Settings > Secrets and variables > Actions > New repository secret** y agrega:
@@ -39,17 +57,19 @@ En el repo [`Emicort17/GYM_register`](https://github.com/Emicort17/GYM_register)
 |---|---|
 | `DB_HOST` | host publico de la DB en Railway (pestana "Connect" de tu servicio MySQL) |
 | `DB_PORT` | puerto publico de la DB en Railway |
-| `DB_NAME` | nombre de la base de datos (ej. `personas_gestion`) |
+| `DB_NAME` | nombre de la base de datos (`railway` en el plugin de MySQL de Railway) |
 | `DB_USER` | usuario de MySQL (Railway suele usar `root`) |
 | `DB_PASSWORD` | password de MySQL |
-| `GDRIVE_FOLDER_ID` | el ID de la carpeta de Drive (paso 2.3) |
-| `GDRIVE_SA_KEY_JSON` | el contenido completo del archivo `.json` de la cuenta de servicio (pegalo tal cual, entre `{` y `}`) |
+| `GDRIVE_FOLDER_ID` | el ID de la carpeta de Drive (paso 3) |
+| `GOOGLE_OAUTH_CLIENT_ID` | impreso por `get_refresh_token.py` (paso 2) |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | impreso por `get_refresh_token.py` (paso 2) |
+| `GOOGLE_OAUTH_REFRESH_TOKEN` | impreso por `get_refresh_token.py` (paso 2) |
 
 Los datos de conexion de Railway estan en el dashboard del servicio de MySQL, pestana
 **"Connect"** o **"Variables"** (`MYSQLHOST`, `MYSQLPORT`, `MYSQLDATABASE`, `MYSQLUSER`,
 `MYSQLPASSWORD`).
 
-### 4. Probar el workflow
+### 5. Probar el workflow
 
 En GitHub, ve a la pestana **Actions > Backup de la base de datos a Google Drive >
 Run workflow** para dispararlo manualmente (no hace falta esperar al cron) y revisa los
@@ -77,7 +97,9 @@ Esto crea `./backups/gym_backup_<fecha>.sql.gz`.
 ### Ver los backups que hay en Drive
 
 ```bash
-export GDRIVE_SA_KEY_JSON="$(cat ruta/a/tu-clave.json)"
+export GOOGLE_OAUTH_CLIENT_ID=...
+export GOOGLE_OAUTH_CLIENT_SECRET=...
+export GOOGLE_OAUTH_REFRESH_TOKEN=...
 export GDRIVE_FOLDER_ID=...
 python scripts/backup/drive_sync.py list
 ```

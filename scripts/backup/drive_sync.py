@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
 """
 Sube, lista y descarga backups de la base de datos en una carpeta de Google
-Drive usando una cuenta de servicio (Service Account), y aplica retencion
-(borra los backups mas viejos cuando hay mas de RETENTION_COUNT).
+Drive de una cuenta personal, autenticado como esa misma cuenta via OAuth
+(refresh token), y aplica retencion (borra los backups mas viejos cuando hay
+mas de RETENTION_COUNT).
+
+Nota: no se usa una cuenta de servicio (Service Account) porque estas no
+tienen cuota de almacenamiento propia en Drive fuera de Google Workspace
+(error tipico: "Service Accounts do not have storage quota"). En su lugar,
+la app se autentica como el usuario dueno del Drive; el refresh token se
+genera una sola vez con get_refresh_token.py (ver README de esta carpeta).
 
 Variables de entorno requeridas:
-  GDRIVE_SA_KEY_JSON  contenido JSON completo de la clave de la cuenta de servicio
-  GDRIVE_FOLDER_ID    ID de la carpeta de Drive donde viven los backups
+  GOOGLE_OAUTH_CLIENT_ID       Client ID de la app OAuth (tipo "Desktop app")
+  GOOGLE_OAUTH_CLIENT_SECRET   Client Secret de esa misma app OAuth
+  GOOGLE_OAUTH_REFRESH_TOKEN   refresh token generado con get_refresh_token.py
+  GDRIVE_FOLDER_ID             ID de la carpeta de Drive donde viven los backups
 
 Variable opcional:
   RETENTION_COUNT     cuantos backups conservar (default 14). Solo aplica en 'upload'.
@@ -18,24 +27,35 @@ Uso:
 """
 import argparse
 import io
-import json
 import os
 import sys
 
-from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
-SCOPES = ["https://www.googleapis.com/auth/drive"]
+SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 BACKUP_PREFIX = "gym_backup_"
+TOKEN_URI = "https://oauth2.googleapis.com/token"
 
 
 def get_service():
-    key_json = os.environ.get("GDRIVE_SA_KEY_JSON")
-    if not key_json:
-        sys.exit("Falta la variable de entorno GDRIVE_SA_KEY_JSON")
-    info = json.loads(key_json)
-    creds = service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
+    client_id = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
+    client_secret = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
+    refresh_token = os.environ.get("GOOGLE_OAUTH_REFRESH_TOKEN")
+    if not client_id or not client_secret or not refresh_token:
+        sys.exit(
+            "Faltan variables de entorno GOOGLE_OAUTH_CLIENT_ID / "
+            "GOOGLE_OAUTH_CLIENT_SECRET / GOOGLE_OAUTH_REFRESH_TOKEN"
+        )
+    creds = Credentials(
+        None,
+        refresh_token=refresh_token,
+        client_id=client_id,
+        client_secret=client_secret,
+        token_uri=TOKEN_URI,
+        scopes=SCOPES,
+    )
     return build("drive", "v3", credentials=creds)
 
 

@@ -20,3 +20,6 @@ Thumbs.db
 /backups/
 *.sql
 *.sql.gz
+
+# Credenciales OAuth locales para configurar el backup a Google Drive
+scripts/backup/client_secret.json

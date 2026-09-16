@@ -1,2 +1,6 @@
 google-api-python-client
 google-auth
+
+# Solo se necesita para correr get_refresh_token.py localmente una vez;
+# no hace falta en el workflow de GitHub Actions.
+google-auth-oauthlib
