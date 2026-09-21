@@ -20,6 +20,10 @@ export const usuariosService = {
     const response = await fetchWithAuth('/usuarios');
     return response.data || response || [];
   },
+  getMe: async (): Promise<Usuario> => {
+    const response = await fetchWithAuth('/usuarios/me');
+    return response.data || response;
+  },
   getById: async (id: number): Promise<Usuario> => {
     const response = await fetchWithAuth(`/usuarios/${id}`);
     return response.data || response;

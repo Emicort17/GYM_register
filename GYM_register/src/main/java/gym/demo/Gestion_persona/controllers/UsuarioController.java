@@ -37,6 +37,16 @@ public class UsuarioController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    // Cuenta del usuario autenticado (accesible para cualquier rol)
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse> getMe(Authentication authentication) {
+        Optional<UserDto> usuario = usuarioService.getUsuarioByEmail(authentication.getName());
+        ApiResponse response = usuario
+                .map(u -> new ApiResponse(u, HttpStatus.OK))
+                .orElseGet(() -> new ApiResponse(HttpStatus.NOT_FOUND, true, "Usuario no encontrado"));
+        return new ResponseEntity<>(response, response.getStatus());
+    }
+
     // Obtener un usuario por ID
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse> getUsuarioById(@PathVariable Integer id) {

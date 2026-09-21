@@ -3,8 +3,10 @@ import { personasService, type Persona } from '../services/personasService';
 import { PersonaModal, type PersonaSaveOptions } from '../components/PersonaModal';
 import { PagosModal } from '../components/PagosModal';
 import { DataTable } from '../components/DataTable';
+import { useAuth } from '../context/AuthContext';
 
 export const Personas: React.FC = () => {
+  const { isAdmin } = useAuth();
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -222,20 +224,24 @@ export const Personas: React.FC = () => {
                 >
                   Realizar Pago / Historial
                 </button>
-                <button
-                  className="btn-outline"
-                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
-                  onClick={() => handleEditOpen(p)}
-                >
-                  Editar
-                </button>
-                <button
-                  className="btn-outline"
-                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', color: '#b91c1c', borderColor: '#fca5a5' }}
-                  onClick={() => handleDelete(p.id)}
-                >
-                  Eliminar
-                </button>
+                {isAdmin && (
+                  <>
+                    <button
+                      className="btn-outline"
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                      onClick={() => handleEditOpen(p)}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      className="btn-outline"
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', color: '#b91c1c', borderColor: '#fca5a5' }}
+                      onClick={() => handleDelete(p.id)}
+                    >
+                      Eliminar
+                    </button>
+                  </>
+                )}
               </div>
             ),
           },

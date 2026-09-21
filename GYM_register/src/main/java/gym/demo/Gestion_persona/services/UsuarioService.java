@@ -28,6 +28,10 @@ public class UsuarioService {
 
     private static final Logger logger = LoggerFactory.getLogger(UsuarioService.class);
 
+    private static final String ADMIN_ROLE = "ADMIN_ROLE";
+    private static final String MSG_UN_SOLO_ADMIN =
+            "Solo puede existir un administrador; únicamente se pueden crear usuarios con rol de empleado";
+
     private static final Pattern EMAIL_PATTERN =
             Pattern.compile("^[\\w.+-]+@[\\w-]+\\.[a-zA-Z]{2,}$");
 
@@ -98,6 +102,12 @@ public class UsuarioService {
                         && usuarioDao.existsByEmail(UserDto.getEmail())) {
                     throw new IllegalArgumentException("El correo ya está registrado");
                 }
+            }
+
+            // No se puede ascender a un usuario a administrador: solo puede existir uno
+            boolean yaEsAdmin = usuario.getRole() != null && ADMIN_ROLE.equals(usuario.getRole().getName());
+            if (UserDto.getRole() != null && ADMIN_ROLE.equals(UserDto.getRole().getName()) && !yaEsAdmin) {
+                throw new IllegalArgumentException(MSG_UN_SOLO_ADMIN);
             }
 
             setUsuarioData(usuario, UserDto, false);
@@ -175,6 +185,11 @@ public class UsuarioService {
     @Transactional
     public UserDto createUsuarioByRole(UserDto UserDto, String roleName) {
         logger.info("Buscando rol con nombre: {}", roleName);
+
+        // Por ahora solo puede existir un administrador; el resto de usuarios son empleados
+        if (ADMIN_ROLE.equals(roleName) && usuarioDao.existsByRoleName(ADMIN_ROLE)) {
+            throw new IllegalArgumentException(MSG_UN_SOLO_ADMIN);
+        }
 
         // Buscar el rol en la base de datos o crearlo automáticamente si es un rol de sistema
         Optional<RoleBean> roleOpt = roleDao.findByName(roleName);

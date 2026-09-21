@@ -43,17 +43,20 @@ public class InitialConfig implements CommandLineRunner {
                 RoleBean.builder().id_role(null).name("USER_ROLE").user(null).build()
         );
 
-        // Crear o buscar usuario administrador usando el patrón Builder
-        getOrSaveUser(
-                UserBean.builder()
-                        .email("admin@example.com")
-                        .password(encoder.encode("admin"))
-                        .status(true)
-                        .blocked(false)
-                        .passwordChangedAt(LocalDateTime.now())
-                        .role(adminRole)
-                        .build()
-        );
+        // El administrador por defecto solo se crea en una base vacía; si ya existe algún usuario
+        // (p. ej. el admin con el correo real del cliente) no se vuelve a crear admin@example.com.
+        if (usuarioRepository.count() == 0) {
+            getOrSaveUser(
+                    UserBean.builder()
+                            .email("admin@example.com")
+                            .password(encoder.encode("admin"))
+                            .status(true)
+                            .blocked(false)
+                            .passwordChangedAt(LocalDateTime.now())
+                            .role(adminRole)
+                            .build()
+            );
+        }
     }
 
     // Método genérico para obtener o guardar un rol

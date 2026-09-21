@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { usuariosService, type Usuario } from '../services/usuariosService';
 import { UsuarioModal } from '../components/UsuarioModal';
 import { DataTable } from '../components/DataTable';
+import { useAuth } from '../context/AuthContext';
 
 export const Usuarios: React.FC = () => {
+  const { isAdmin } = useAuth();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -31,9 +33,14 @@ export const Usuarios: React.FC = () => {
     try {
       setLoading(true);
       setError('');
-      const data = await usuariosService.getAll();
-      const list = Array.isArray(data) ? data : [];
-      setUsuarios(list);
+      // Un empleado solo puede consultar su propia cuenta (para cambiar su contraseña)
+      if (isAdmin) {
+        const data = await usuariosService.getAll();
+        setUsuarios(Array.isArray(data) ? data : []);
+      } else {
+        const me = await usuariosService.getMe();
+        setUsuarios(me ? [me] : []);
+      }
     } catch (err: any) {
       setError(err.message || 'Error al obtener usuarios');
     } finally {
@@ -126,9 +133,9 @@ export const Usuarios: React.FC = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ margin: 0, color: 'var(--primary)', fontSize: '1.6rem', fontWeight: 700 }}>Gestión de Usuarios</h1>
+          <h1 style={{ margin: 0, color: 'var(--primary)', fontSize: '1.6rem', fontWeight: 700 }}>{isAdmin ? 'Gestión de Usuarios' : 'Mi Cuenta'}</h1>
           <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Cuentas de acceso, contraseñas y roles del personal del gimnasio
+            {isAdmin ? 'Cuentas de acceso, contraseñas y roles del personal del gimnasio' : 'Tu cuenta de acceso y cambio de contraseña'}
           </p>
         </div>
       </div>
@@ -178,9 +185,11 @@ export const Usuarios: React.FC = () => {
         defaultSortOrder="asc"
         emptyMessage="No se encontraron usuarios registrados"
         extraHeaderActions={
-          <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
-            + Nuevo Usuario
-          </button>
+          isAdmin ? (
+            <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
+              + Nuevo Usuario
+            </button>
+          ) : undefined
         }
         columns={[
           {

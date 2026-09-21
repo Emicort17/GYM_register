@@ -28,9 +28,10 @@ import java.util.List;
 @EnableWebSecurity
 @EnableMethodSecurity
 public class MainSecurity {
+    // Los usuarios (incluidos los empleados) los crea únicamente un ADMIN desde el sistema;
+    // no hay auto-registro público, porque USER_ROLE ahora puede ver y registrar socios.
     private static final String[] WHITE_LIST = {
             "/api/auth/**",
-            "/api/usuarios/crear/USER_ROLE",
     };
 
     private final UserDetailsServiceImpl service;
@@ -87,10 +88,17 @@ public class MainSecurity {
                         // El propio usuario (ADMIN o USER) puede cambiar su propia contraseña;
                         // la pertenencia de la cuenta se valida en UsuarioService.changePassword.
                         .requestMatchers(HttpMethod.PATCH, "/api/usuarios/*/password").authenticated()
-                        // El resto de la administración de usuarios y roles es exclusiva de ADMIN,
-                        // incluida la creación de usuarios con un rol distinto de USER_ROLE.
+                        // Cualquier usuario autenticado puede consultar únicamente su propia cuenta
+                        // (así el empleado puede cambiar su contraseña sin ver a los demás usuarios).
+                        .requestMatchers(HttpMethod.GET, "/api/usuarios/me").authenticated()
+                        // El resto de la administración de usuarios y roles es exclusiva de ADMIN.
                         .requestMatchers("/api/usuarios/**").hasAuthority("ADMIN_ROLE")
                         .requestMatchers("/api/roles/**").hasAuthority("ADMIN_ROLE")
+                        // Empleado (USER_ROLE): puede ver personas y sus pagos, registrar personas
+                        // nuevas y registrar pagos. Editar y eliminar personas es solo de ADMIN.
+                        .requestMatchers(HttpMethod.GET, "/api/personas/**").hasAnyAuthority("ADMIN_ROLE", "USER_ROLE")
+                        .requestMatchers(HttpMethod.POST, "/api/personas/crear").hasAnyAuthority("ADMIN_ROLE", "USER_ROLE")
+                        .requestMatchers(HttpMethod.POST, "/api/personas/*/pagos").hasAnyAuthority("ADMIN_ROLE", "USER_ROLE")
                         .requestMatchers("/api/personas/**").hasAuthority("ADMIN_ROLE")
                         .requestMatchers(HttpMethod.GET, "/api/bitacora/**").hasAuthority("ADMIN_ROLE")
                         .anyRequest().authenticated()

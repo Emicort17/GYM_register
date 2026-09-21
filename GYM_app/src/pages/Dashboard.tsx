@@ -11,7 +11,7 @@ import { PersonasIcon, UsuariosIcon, BitacoraIcon, LogoutIcon } from '../icons';
 type View = 'personas' | 'usuarios' | 'bitacora';
 
 export const Dashboard: React.FC = () => {
-  const { logout } = useAuth();
+  const { logout, isAdmin } = useAuth();
   const [currentView, setCurrentView] = useState<View>('personas');
 
   // Stats state
@@ -25,10 +25,11 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     const loadStats = async () => {
       try {
+        // Un empleado no tiene acceso a usuarios ni bitácora: no se consultan (un 403 cerraría su sesión)
         const [pData, uData, bData] = await Promise.all([
           personasService.getAll().catch(() => []),
-          usuariosService.getAll().catch(() => []),
-          bitacoraService.getAll().catch(() => [])
+          isAdmin ? usuariosService.getAll().catch(() => []) : Promise.resolve([]),
+          isAdmin ? bitacoraService.getAll().catch(() => []) : Promise.resolve([])
         ]);
 
         const pList = Array.isArray(pData) ? pData : (pData as any)?.data || [];
@@ -47,7 +48,7 @@ export const Dashboard: React.FC = () => {
       }
     };
     loadStats();
-  }, [currentView]);
+  }, [currentView, isAdmin]);
 
   const renderView = () => {
     switch (currentView) {
@@ -56,7 +57,7 @@ export const Dashboard: React.FC = () => {
       case 'usuarios':
         return <Usuarios />;
       case 'bitacora':
-        return <Bitacora />;
+        return isAdmin ? <Bitacora /> : <Personas />;
       default:
         return <Personas />;
     }
@@ -110,15 +111,17 @@ export const Dashboard: React.FC = () => {
             <NavItem
               active={currentView === 'usuarios'}
               onClick={() => setCurrentView('usuarios')}
-              label="Usuarios Sistema"
+              label={isAdmin ? 'Usuarios Sistema' : 'Mi Cuenta'}
               icon={<UsuariosIcon size={20} color={currentView === 'usuarios' ? 'var(--primary)' : 'var(--text-main)'} />}
             />
-            <NavItem
-              active={currentView === 'bitacora'}
-              onClick={() => setCurrentView('bitacora')}
-              label="Bitácora Auditoría"
-              icon={<BitacoraIcon size={20} color={currentView === 'bitacora' ? 'var(--primary)' : 'var(--text-main)'} />}
-            />
+            {isAdmin && (
+              <NavItem
+                active={currentView === 'bitacora'}
+                onClick={() => setCurrentView('bitacora')}
+                label="Bitácora Auditoría"
+                icon={<BitacoraIcon size={20} color={currentView === 'bitacora' ? 'var(--primary)' : 'var(--text-main)'} />}
+              />
+            )}
           </ul>
         </nav>
 
@@ -154,25 +157,29 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="stat-card">
-            <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <UsuariosIcon size={24} color="var(--primary)" />
-            </div>
-            <div className="stat-info">
-              <h4>Usuarios Sistema</h4>
-              <div className="stat-value">{totalUsuarios}</div>
-            </div>
-          </div>
+          {isAdmin && (
+            <>
+              <div className="stat-card">
+                <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <UsuariosIcon size={24} color="var(--primary)" />
+                </div>
+                <div className="stat-info">
+                  <h4>Usuarios Sistema</h4>
+                  <div className="stat-value">{totalUsuarios}</div>
+                </div>
+              </div>
 
-          <div className="stat-card">
-            <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <BitacoraIcon size={24} color="var(--primary)" />
-            </div>
-            <div className="stat-info">
-              <h4>Movimientos Bitácora</h4>
-              <div className="stat-value">{totalBitacora}</div>
-            </div>
-          </div>
+              <div className="stat-card">
+                <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <BitacoraIcon size={24} color="var(--primary)" />
+                </div>
+                <div className="stat-info">
+                  <h4>Movimientos Bitácora</h4>
+                  <div className="stat-value">{totalBitacora}</div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* View Component */}
