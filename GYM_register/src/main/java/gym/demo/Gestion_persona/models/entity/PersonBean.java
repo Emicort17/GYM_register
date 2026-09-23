@@ -21,10 +21,10 @@ public class PersonBean {
     @Column(name = "nombre", nullable = false)
     private String name;
 
-    @Column(name = "correo", nullable = false, unique = true)
+    @Column(name = "correo", unique = true)
     private String email;
 
-    @Column(name = "telefono", nullable = false, unique = true)
+    @Column(name = "telefono", nullable = false)
     private String telefono;
 
     @Column(name = "edad", nullable = false)

@@ -13,8 +13,4 @@ public interface PersonRepository extends JpaRepository<PersonBean, Integer> {
     boolean existsByEmail(String email);
 
     boolean existsByEmailAndIdNot(String email, Integer id);
-
-    boolean existsByTelefono(String telefono);
-
-    boolean existsByTelefonoAndIdNot(String telefono, Integer id);
 }

@@ -33,6 +33,13 @@ public class InitialConfig implements CommandLineRunner {
         } catch (Exception ignored) {
             // La restricción ya no existe o la tabla es nueva
         }
+        // El correo de las personas es opcional: Hibernate (ddl-auto=update) no relaja una columna
+        // que ya existe como NOT NULL, así que se ajusta aquí (es idempotente).
+        try {
+            jdbcTemplate.execute("ALTER TABLE persona MODIFY correo VARCHAR(255) NULL");
+        } catch (Exception ignored) {
+            // La tabla aún no existe o el motor no soporta la sentencia
+        }
         // Crear o buscar roles usando el patrón Builder
         RoleBean adminRole = getOrSaveRol(
                 RoleBean.builder().id_role(null).name("ADMIN_ROLE").user(null).build()

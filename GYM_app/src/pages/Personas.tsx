@@ -178,6 +178,7 @@ export const Personas: React.FC = () => {
             label: 'Correo',
             sortable: true,
             sortType: 'string',
+            render: (p) => p.email || <span style={{ color: 'var(--text-muted)' }}>-</span>,
           },
           {
             key: 'telefono',

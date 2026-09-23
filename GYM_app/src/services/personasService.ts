@@ -3,7 +3,7 @@ import { fetchWithAuth } from './api';
 export interface Persona {
   id: number;
   name: string;
-  email: string;
+  email?: string | null; // opcional
   telefono: string;
   age: number;
   fechaRegistro: string;

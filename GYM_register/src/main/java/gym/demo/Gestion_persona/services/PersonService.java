@@ -53,20 +53,35 @@ public class PersonService {
         }
     }
 
+    // El correo es opcional: un texto vacío se guarda como null para no chocar con la
+    // validación de correo duplicado entre personas que no tienen correo.
+    private void normalizarCorreo(PersonBean person) {
+        if (person.getEmail() != null) {
+            String correo = person.getEmail().trim();
+            person.setEmail(correo.isEmpty() ? null : correo);
+        }
+    }
+
+    // Texto para la bitácora: el correo si existe; si no, el nombre
+    private String descripcion(PersonBean person) {
+        return person.getEmail() != null ? person.getEmail() : person.getName();
+    }
+
     // Guardar una nueva persona
     @Transactional(rollbackFor = {SQLException.class})
     public ResponseEntity<ApiResponse> save(PersonBean person) {
-        // Verifica si el correo ya está registrado
-        if (repository.existsByEmail(person.getEmail())) {
+        normalizarCorreo(person);
+        // Verifica si el correo ya está registrado (el correo es opcional)
+        if (person.getEmail() != null && repository.existsByEmail(person.getEmail())) {
             return new ResponseEntity<>(
                     new ApiResponse(HttpStatus.BAD_REQUEST, true, "El correo ya está registrado"),
                     HttpStatus.BAD_REQUEST
             );
         }
-        // Verifica si el teléfono ya está registrado
-        if (repository.existsByTelefono(person.getTelefono())) {
+        // El teléfono es obligatorio, pero puede repetirse entre personas
+        if (person.getTelefono() == null || person.getTelefono().isBlank()) {
             return new ResponseEntity<>(
-                    new ApiResponse(HttpStatus.BAD_REQUEST, true, "El teléfono ya está registrado"),
+                    new ApiResponse(HttpStatus.BAD_REQUEST, true, "El teléfono es obligatorio"),
                     HttpStatus.BAD_REQUEST
             );
         }
@@ -76,7 +91,7 @@ public class PersonService {
         }
         // Guarda la persona
         PersonBean saved = repository.saveAndFlush(person);
-        bitacoraService.registrar("CREAR_PERSONA", "persona", saved.getId(), "Alta de persona: " + saved.getEmail());
+        bitacoraService.registrar("CREAR_PERSONA", "persona", saved.getId(), "Alta de persona: " + descripcion(saved));
         return new ResponseEntity<>(
                 new ApiResponse(registroService.toEstadoDto(saved), HttpStatus.OK),
                 HttpStatus.OK
@@ -94,17 +109,18 @@ public class PersonService {
         }
         Optional<PersonBean> foundPerson = repository.findById(person.getId());
         if (foundPerson.isPresent()) {
-            // Verifica si el correo ya está registrado por otra persona
-            if (repository.existsByEmailAndIdNot(person.getEmail(), person.getId())) {
+            normalizarCorreo(person);
+            // Verifica si el correo ya está registrado por otra persona (el correo es opcional)
+            if (person.getEmail() != null && repository.existsByEmailAndIdNot(person.getEmail(), person.getId())) {
                 return new ResponseEntity<>(
                         new ApiResponse(HttpStatus.BAD_REQUEST, true, "El correo ya está registrado por otra persona"),
                         HttpStatus.BAD_REQUEST
                 );
             }
-            // Verifica si el teléfono ya está registrado por otra persona
-            if (repository.existsByTelefonoAndIdNot(person.getTelefono(), person.getId())) {
+            // El teléfono es obligatorio, pero puede repetirse entre personas
+            if (person.getTelefono() == null || person.getTelefono().isBlank()) {
                 return new ResponseEntity<>(
-                        new ApiResponse(HttpStatus.BAD_REQUEST, true, "El teléfono ya está registrado por otra persona"),
+                        new ApiResponse(HttpStatus.BAD_REQUEST, true, "El teléfono es obligatorio"),
                         HttpStatus.BAD_REQUEST
                 );
             }
@@ -112,7 +128,7 @@ public class PersonService {
             person.setFechaRegistro(foundPerson.get().getFechaRegistro());
             // Actualiza la persona
             PersonBean updated = repository.saveAndFlush(person);
-            bitacoraService.registrar("ACTUALIZAR_PERSONA", "persona", updated.getId(), "Actualización de persona: " + updated.getEmail());
+            bitacoraService.registrar("ACTUALIZAR_PERSONA", "persona", updated.getId(), "Actualización de persona: " + descripcion(updated));
             return new ResponseEntity<>(
                     new ApiResponse(registroService.toEstadoDto(updated), HttpStatus.OK),
                     HttpStatus.OK
@@ -132,7 +148,7 @@ public class PersonService {
             // Elimina primero los pagos asociados para evitar la violación de la FK registro.persona_id
             registroRepository.deleteByPersonaId(id);
             repository.deleteById(id);
-            bitacoraService.registrar("ELIMINAR_PERSONA", "persona", id, "Baja de persona: " + foundPerson.get().getEmail());
+            bitacoraService.registrar("ELIMINAR_PERSONA", "persona", id, "Baja de persona: " + descripcion(foundPerson.get()));
             return new ResponseEntity<>(
                     new ApiResponse(HttpStatus.OK, false, "Registro Eliminado"),
                     HttpStatus.OK

@@ -66,7 +66,7 @@ export const PersonaModal: React.FC<PersonaModalProps> = ({
     try {
       const personaPayload: Partial<Persona> = {
         name: `${nombres.trim()} ${apellidos.trim()}`.trim(),
-        email: correo.trim(),
+        email: correo.trim() || null,
         telefono: telefono.trim(),
         age: typeof edad === 'number' ? edad : 25
       };
@@ -130,11 +130,10 @@ export const PersonaModal: React.FC<PersonaModalProps> = ({
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="form-group">
-                <label htmlFor="correo">Correo Electrónico *</label>
+                <label htmlFor="correo">Correo Electrónico (opcional)</label>
                 <input
                   id="correo"
                   type="email"
-                  required
                   value={correo}
                   onChange={(e) => setCorreo(e.target.value)}
                   placeholder="juan.perez@example.com"
