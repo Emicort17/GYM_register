@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { usuariosService, type Usuario } from '../services/usuariosService';
 import { UsuarioModal } from '../components/UsuarioModal';
 import { DataTable } from '../components/DataTable';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { useAuth } from '../context/AuthContext';
 
 export const Usuarios: React.FC = () => {
@@ -11,6 +12,8 @@ export const Usuarios: React.FC = () => {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<{ id: number; email: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (successMsg) {
@@ -81,19 +84,27 @@ export const Usuarios: React.FC = () => {
   const handleDeleteUsuario = async (id?: number, userEmail?: string) => {
     if (!id) return;
     if (userEmail && userEmail.toLowerCase() === currentUserEmail) {
-      alert('No puedes eliminar tu propio usuario.');
+      setSuccessMsg('');
+      setError('No puedes eliminar tu propio usuario.');
       return;
     }
-    if (window.confirm('¿Estás seguro de eliminar este usuario?')) {
-      try {
-        setSuccessMsg('');
-        setError('');
-        await usuariosService.delete(id);
-        setSuccessMsg('Usuario eliminado');
-        await fetchUsuarios();
-      } catch (err: any) {
-        setError(err.message || 'No se pudo eliminar el usuario');
-      }
+    setUserToDelete({ id, email: userEmail || '' });
+  };
+
+  const handleConfirmDeleteUsuario = async () => {
+    if (!userToDelete) return;
+    try {
+      setIsDeleting(true);
+      setSuccessMsg('');
+      setError('');
+      await usuariosService.delete(userToDelete.id);
+      setSuccessMsg('Usuario eliminado');
+      await fetchUsuarios();
+    } catch (err: any) {
+      setError(err.message || 'No se pudo eliminar el usuario');
+    } finally {
+      setIsDeleting(false);
+      setUserToDelete(null);
     }
   };
 
@@ -281,6 +292,15 @@ export const Usuarios: React.FC = () => {
             },
           },
         ]}
+      />
+
+      <ConfirmModal
+        isOpen={userToDelete !== null}
+        title="Eliminar usuario"
+        message={`¿Seguro que deseas eliminar al usuario ${userToDelete?.email ?? ''}? Esta acción no se puede deshacer.`}
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDeleteUsuario}
+        onCancel={() => setUserToDelete(null)}
       />
 
       <UsuarioModal

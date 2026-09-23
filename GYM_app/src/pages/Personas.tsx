@@ -3,6 +3,7 @@ import { personasService, type Persona } from '../services/personasService';
 import { PersonaModal, type PersonaSaveOptions } from '../components/PersonaModal';
 import { PagosModal } from '../components/PagosModal';
 import { DataTable } from '../components/DataTable';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { useAuth } from '../context/AuthContext';
 
 export const Personas: React.FC = () => {
@@ -24,6 +25,9 @@ export const Personas: React.FC = () => {
   // Modales state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
+
+  const [personaToDelete, setPersonaToDelete] = useState<Persona | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [selectedPersonaForPagos, setSelectedPersonaForPagos] = useState<Persona | null>(null);
   const [isPagosModalOpen, setIsPagosModalOpen] = useState(false);
@@ -87,17 +91,20 @@ export const Personas: React.FC = () => {
     await fetchPersonas();
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('¿Estás seguro de que deseas eliminar esta persona?')) {
-      try {
-        setSuccessMsg('');
-        setError('');
-        await personasService.delete(id);
-        setSuccessMsg('Persona eliminada');
-        await fetchPersonas();
-      } catch (err: any) {
-        setError(err.message || 'No se pudo eliminar la persona');
-      }
+  const handleConfirmDelete = async () => {
+    if (!personaToDelete) return;
+    try {
+      setIsDeleting(true);
+      setSuccessMsg('');
+      setError('');
+      await personasService.delete(personaToDelete.id);
+      setSuccessMsg('Persona eliminada');
+      await fetchPersonas();
+    } catch (err: any) {
+      setError(err.message || 'No se pudo eliminar la persona');
+    } finally {
+      setIsDeleting(false);
+      setPersonaToDelete(null);
     }
   };
 
@@ -237,7 +244,7 @@ export const Personas: React.FC = () => {
                     <button
                       className="btn-outline"
                       style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', color: '#b91c1c', borderColor: '#fca5a5' }}
-                      onClick={() => handleDelete(p.id)}
+                      onClick={() => setPersonaToDelete(p)}
                     >
                       Eliminar
                     </button>
@@ -254,6 +261,15 @@ export const Personas: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSavePersona}
         initialData={editingPersona}
+      />
+
+      <ConfirmModal
+        isOpen={personaToDelete !== null}
+        title="Eliminar persona"
+        message={`¿Seguro que deseas eliminar a ${personaToDelete?.name ?? 'esta persona'}? Se borrarán también todos sus pagos registrados. Esta acción no se puede deshacer.`}
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setPersonaToDelete(null)}
       />
 
       <PagosModal
