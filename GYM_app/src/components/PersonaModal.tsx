@@ -145,10 +145,14 @@ export const PersonaModal: React.FC<PersonaModalProps> = ({
                 <input
                   id="telefono"
                   type="text"
+                  inputMode="numeric"
                   required
+                  maxLength={10}
+                  pattern="[0-9]{10}"
+                  title="El teléfono debe tener 10 dígitos, sin espacios ni guiones"
                   value={telefono}
                   onChange={(e) => setTelefono(e.target.value)}
-                  placeholder="Ej. 8888-9999"
+                  placeholder="Ej. 7771234567"
                 />
               </div>
             </div>

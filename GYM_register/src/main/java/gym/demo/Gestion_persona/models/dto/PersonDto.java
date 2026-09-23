@@ -16,7 +16,7 @@ public class PersonDto {
     @Size(min = 2, max = 60, message = "El nombre debe tener entre 2 y 60 caracteres")
     private String name;
 
-    @NotBlank(message = "El correo no puede estar vacío")
+    // El correo es opcional; si se envía, debe tener formato válido
     @Email(message = "El correo debe tener un formato válido")
     private String email;
 
