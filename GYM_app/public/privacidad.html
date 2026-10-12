@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Política de privacidad - GYM Register</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.6; max-width: 720px; margin: 2rem auto; padding: 0 1rem; color: #1f2937; }
+    h1 { color: #b91c1c; }
+    h2 { margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <h1>Política de privacidad</h1>
+  <p>Última actualización: octubre de 2026.</p>
+
+  <p>
+    GYM Register es un sistema de gestión interna para un gimnasio: registro de socios,
+    control de pagos y vencimientos. Lo usa únicamente el personal autorizado del gimnasio
+    con una cuenta creada por el administrador. Esta página describe cómo se tratan los
+    datos en la herramienta de respaldos conectada a Google Drive.
+  </p>
+
+  <h2>Qué hace la conexión con Google</h2>
+  <p>
+    Una vez al día, un proceso automático genera una copia de seguridad de la base de datos
+    del sistema y la guarda en una carpeta de Google Drive de la persona responsable del
+    sistema. Para hacerlo, la aplicación solicita un único permiso de Google:
+    <code>drive.file</code>, que solo permite ver y administrar los archivos que la propia
+    aplicación crea. No tiene acceso al resto de los archivos de Drive.
+  </p>
+
+  <h2>Qué datos se usan</h2>
+  <ul>
+    <li>De Google solo se usa una credencial de acceso (token) para subir y organizar las copias de seguridad.</li>
+    <li>No se leen correos, contactos, calendario ni otros archivos de la cuenta de Google.</li>
+    <li>Las copias de seguridad contienen los datos del propio sistema del gimnasio.</li>
+  </ul>
+
+  <h2>Con quién se comparten</h2>
+  <p>
+    No se venden ni se comparten datos con terceros. La credencial de Google se guarda de
+    forma cifrada en el servicio de automatización donde corre el respaldo y solo la usa ese
+    proceso.
+  </p>
+
+  <h2>Cómo revocar el acceso</h2>
+  <p>
+    La persona responsable puede revocar el acceso en cualquier momento desde la
+    configuración de seguridad de su cuenta de Google (&quot;Conexiones con apps y servicios
+    de terceros&quot;). Al hacerlo, los respaldos automáticos dejan de funcionar.
+  </p>
+</body>
+</html>
