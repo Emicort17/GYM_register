@@ -7,12 +7,32 @@ import { personasService } from '../services/personasService';
 import { usuariosService } from '../services/usuariosService';
 import { bitacoraService } from '../services/bitacoraService';
 import { PersonasIcon, UsuariosIcon, BitacoraIcon, LogoutIcon } from '../icons';
+import logo from '../img/powerhouse-logo.jpg';
+
+const STATS_KEY = 'gym_stats_hidden';
 
 type View = 'personas' | 'usuarios' | 'bitacora';
 
 export const Dashboard: React.FC = () => {
   const { logout, isAdmin } = useAuth();
   const [currentView, setCurrentView] = useState<View>('personas');
+  const [statsHidden, setStatsHidden] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(STATS_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleStats = () => {
+    const next = !statsHidden;
+    setStatsHidden(next);
+    try {
+      localStorage.setItem(STATS_KEY, next ? '1' : '0');
+    } catch {
+      // sin almacenamiento: la preferencia solo dura mientras la pestaña esté abierta
+    }
+  };
 
   // Stats state
   const [totalPersonas, setTotalPersonas] = useState<number>(0);
@@ -78,22 +98,11 @@ export const Dashboard: React.FC = () => {
         }}
       >
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-          <div
-            style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '8px',
-              backgroundColor: 'var(--primary)',
-              color: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 800,
-              fontSize: '1.2rem'
-            }}
-          >
-            G
-          </div>
+          <img
+            src={logo}
+            alt="Powerhouse Gym"
+            style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+          />
           <div>
             <h2 style={{ color: 'var(--primary)', margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>GYM Admin</h2>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Gestión Integral</span>
@@ -134,8 +143,21 @@ export const Dashboard: React.FC = () => {
 
       {/* Main Content */}
       <main style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
-        {/* Top Summary Cards */}
-        <div className="stats-grid">
+        {/* Top Summary Cards (plegables; la preferencia se recuerda en este navegador) */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+          <h2 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-muted)', fontWeight: 600 }}>Resumen</h2>
+          <button
+            type="button"
+            className="btn-outline"
+            style={{ padding: '0.25rem 0.7rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+            onClick={toggleStats}
+            aria-expanded={!statsHidden}
+            aria-controls="stats-panel"
+          >
+            {statsHidden ? 'Mostrar resumen' : 'Ocultar resumen'}
+          </button>
+        </div>
+        <div className="stats-grid" id="stats-panel" hidden={statsHidden}>
           <div className="stat-card" style={{ flex: 1.2 }}>
             <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <PersonasIcon size={24} color="var(--primary)" />

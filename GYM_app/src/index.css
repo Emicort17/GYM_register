@@ -206,6 +206,10 @@ tr:hover td {
   margin-bottom: 2rem;
 }
 
+.stats-grid[hidden] {
+  display: none;
+}
+
 .stat-card {
   background-color: var(--surface);
   border-radius: var(--radius);
